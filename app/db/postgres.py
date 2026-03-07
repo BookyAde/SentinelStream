@@ -1,10 +1,10 @@
 """
 SentinelStream PostgreSQL Database
-Async SQLAlchemy engine, session factory, and initialization.
+Supports both DATABASE_URL (Railway) and individual vars (local Docker).
 """
 
+import os
 from typing import AsyncGenerator
-
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -13,8 +13,21 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+
+def _get_database_url() -> str:
+    # Railway provides DATABASE_URL directly — convert to asyncpg format
+    url = os.environ.get("DATABASE_URL") or os.environ.get("DATABASE_PRIVATE_URL")
+    if url:
+        # Railway uses postgres:// — SQLAlchemy needs postgresql+asyncpg://
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+    # Fall back to constructed URL for local Docker
+    return settings.DATABASE_URL
+
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _get_database_url(),
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
@@ -34,18 +47,13 @@ class Base(DeclarativeBase):
 
 
 async def init_db() -> None:
-    """Create all tables on startup. Uses checkfirst=True so re-runs are safe."""
-    from app.models import event, dlq  # noqa: F401 – ensures models are registered
-
+    from app.models import event, dlq  # noqa: F401
     async with engine.begin() as conn:
-        # checkfirst=True makes CREATE TABLE and CREATE TYPE idempotent —
-        # they are skipped if the object already exists in the database.
         await conn.run_sync(Base.metadata.create_all, checkfirst=True)
     logger.info("Database initialized")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that yields a database session."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
