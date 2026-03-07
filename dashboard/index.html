@@ -3,23 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SentinelStream — Architecture</title>
+<title>SentinelStream — Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
-
   :root {
-    --bg: #0a0e14;
-    --surface: #0f1520;
-    --surface2: #151d2e;
-    --border: #1e2d45;
-    --accent: #00d4ff;
-    --accent2: #00ff9d;
-    --warn: #ffb800;
-    --danger: #ff4757;
-    --text: #c8d8f0;
-    --muted: #4a6080;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'IBM Plex Sans', sans-serif;
+    --bg: #020508;
+    --bg1: #060e18;
+    --bg2: #091422;
+    --border: #0f2540;
+    --border2: #163450;
+    --cyan: #00f0ff;
+    --green: #00ff9f;
+    --amber: #ffaa00;
+    --red: #ff1744;
+    --purple: #d500f9;
+    --blue: #448aff;
+    --text: #b0c8e8;
+    --muted: #4a6a8a;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Orbitron', sans-serif;
+    --sans: 'Exo 2', sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,766 +35,1284 @@
     overflow-x: hidden;
   }
 
-  /* grid bg */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
+  /* Background effects */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background-image:
-      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
+      linear-gradient(rgba(0,240,255,.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,.02) 1px, transparent 1px);
+    background-size: 56px 56px;
+    animation: grid-move 30s linear infinite;
+  }
+  @keyframes grid-move { to { background-position: 56px 56px; } }
+
+  .bg-scan {
+    position: fixed; inset: 0; z-index: 999; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.05) 3px, rgba(0,0,0,.05) 4px);
   }
 
+  #app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ── HEADER ── */
   header {
-    padding: 24px 40px;
+    position: sticky; top: 0; z-index: 200;
+    display: flex; align-items: center; gap: 14px;
+    height: 56px; padding: 0 28px;
+    background: rgba(2,5,8,.97);
     border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: rgba(10,14,20,0.9);
-    backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    backdrop-filter: blur(16px);
   }
 
-  .logo {
-    font-family: var(--mono);
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: -0.5px;
+  .wordmark {
+    font-family: var(--display);
+    font-size: 14px; font-weight: 800;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: white; white-space: nowrap;
+  }
+  .wordmark span { color: var(--cyan); }
+
+  .sep { width: 1px; height: 22px; background: var(--border); }
+
+  .status-chip {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10px;
+    padding: 3px 10px; border-radius: 2px; border: 1px solid;
+    letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
+    transition: all .3s;
+  }
+  .status-chip.online  { color: var(--green);  border-color: rgba(0,255,159,.3); background: rgba(0,255,159,.06); }
+  .status-chip.offline { color: var(--red);    border-color: rgba(255,23,68,.3); background: rgba(255,23,68,.06); }
+
+  .pulse { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse-anim 1.4s infinite; }
+  @keyframes pulse-anim { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+
+  .clock {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted); letter-spacing: 1px;
   }
 
-  .logo span { color: var(--accent2); }
+  .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-  .badge {
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 2px;
-    background: rgba(0,212,255,0.1);
-    border: 1px solid rgba(0,212,255,0.3);
-    color: var(--accent);
-    letter-spacing: 1px;
-    text-transform: uppercase;
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10px;
+    color: var(--red); letter-spacing: 2px; text-transform: uppercase;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse-anim .9s infinite; }
+
+  .icon-btn {
+    font-family: var(--mono); font-size: 10px;
+    background: none; border: 1px solid var(--border2);
+    color: var(--muted); padding: 5px 14px;
+    border-radius: 2px; cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase;
+    transition: all .15s; white-space: nowrap;
+  }
+  .icon-btn:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(0,240,255,.05); }
+
+  /* ── NAV TABS ── */
+  .nav-bar {
+    display: flex; border-bottom: 1px solid var(--border);
+    background: rgba(2,5,8,.9); padding: 0 28px;
+    position: sticky; top: 56px; z-index: 100;
+  }
+  .nav-item {
+    font-family: var(--mono); font-size: 10px;
+    padding: 13px 18px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); border: none; background: none;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all .15s; white-space: nowrap;
+  }
+  .nav-item:hover { color: var(--text); }
+  .nav-item.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 24px 28px; }
+  .page.active { display: block; }
+
+  /* ── KPI ROW ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px; margin-bottom: 16px;
+  }
+  .kpi-card {
+    background: var(--bg1); border: 1px solid var(--border);
+    border-radius: 3px; padding: 16px 18px;
+    position: relative; overflow: hidden;
+    transition: border-color .2s, transform .15s;
+  }
+  .kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent, var(--cyan));
+  }
+  .kpi-label {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-family: var(--display); font-size: 26px; font-weight: 700;
+    color: var(--accent, var(--cyan)); line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: all .3s;
+  }
+  .kpi-sub {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--muted); margin-top: 6px;
   }
 
-  nav {
+  /* ── LAYOUT HELPERS ── */
+  .row-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .row-3   { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .row-2   { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .col-stack { display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--bg1); border: 1px solid var(--border);
+    border-radius: 3px; overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px; border-bottom: 1px solid var(--border);
+    background: rgba(9,20,34,.7);
+  }
+  .panel-title {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 1.5px; text-transform: uppercase; color: var(--text);
+  }
+  .panel-pill {
     margin-left: auto;
-    display: flex;
-    gap: 4px;
+    font-family: var(--mono); font-size: 9px;
+    padding: 2px 8px; border-radius: 2px; border: 1px solid;
   }
+  .panel-body { padding: 18px; }
 
-  nav button {
-    background: none;
-    border: 1px solid transparent;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 6px 14px;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 0.5px;
+  /* ── CHART ── */
+  #throughput-chart { width: 100%; height: 130px; display: block; }
+
+  /* ── STATUS BREAKDOWN ── */
+  .breakdown-list { display: flex; flex-direction: column; gap: 10px; }
+  .breakdown-item { display: flex; align-items: center; gap: 10px; }
+  .breakdown-label {
+    font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--muted); width: 80px; flex-shrink: 0;
   }
+  .breakdown-track { flex: 1; height: 5px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+  .breakdown-fill  { height: 100%; border-radius: 3px; transition: width .6s ease; }
+  .breakdown-count { font-family: var(--mono); font-size: 11px; color: var(--text); width: 32px; text-align: right; }
+  .breakdown-pct   { font-family: var(--mono); font-size: 9px; color: var(--muted); width: 32px; text-align: right; }
 
-  nav button:hover { color: var(--text); border-color: var(--border); }
-  nav button.active { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.07); }
+  /* ── TYPE CHART ── */
+  .type-list { display: flex; flex-direction: column; gap: 8px; }
+  .type-item { display: flex; align-items: center; gap: 8px; }
+  .type-name { font-family: var(--mono); font-size: 10px; color: var(--cyan); width: 120px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .type-track { flex: 1; height: 14px; background: var(--bg2); border-radius: 2px; overflow: hidden; }
+  .type-fill  { height: 100%; border-radius: 2px; background: linear-gradient(90deg, rgba(0,188,212,.4), rgba(0,240,255,.7)); transition: width .6s ease; }
+  .type-count { font-family: var(--mono); font-size: 10px; color: var(--muted); width: 26px; text-align: right; }
 
-  main {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 40px;
+  /* ── QUEUE GAUGES ── */
+  .gauge-list { display: flex; flex-direction: column; gap: 14px; }
+  .gauge-item {}
+  .gauge-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .gauge-name { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .gauge-val  { font-family: var(--mono); font-size: 11px; color: var(--text); font-weight: 500; }
+  .gauge-track { height: 8px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+  .gauge-fill  { height: 100%; border-radius: 4px; transition: width .6s ease; }
+
+  /* ── ACTIVITY LOG ── */
+  .activity-log { max-height: 155px; overflow-y: auto; }
+  .activity-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 9px 18px; border-bottom: 1px solid rgba(15,37,64,.5);
+    font-family: var(--mono); font-size: 11px;
   }
+  .activity-item:hover { background: rgba(0,240,255,.02); }
+  .activity-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+  .activity-time { color: var(--muted); width: 76px; flex-shrink: 0; }
+  .activity-type { color: var(--text); flex: 1; }
+  .activity-src  { color: var(--muted); font-size: 10px; }
 
-  /* ── TABS ── */
-  .tab { display: none; }
-  .tab.active { display: block; }
+  /* ── EVENT FEED ── */
+  .feed-filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 
-  /* ── PIPELINE DIAGRAM ── */
-  .pipeline {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    margin: 40px 0;
-    overflow-x: auto;
-    padding-bottom: 8px;
+  .filter-select {
+    background: var(--bg1); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 11px;
+    padding: 7px 10px; border-radius: 2px; outline: none;
+    cursor: pointer; transition: border-color .15s;
   }
+  .filter-select:focus { border-color: var(--cyan); }
+  .filter-select option { background: var(--bg1); }
 
-  .pipe-node {
-    flex: 1;
-    min-width: 160px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 24px 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    text-align: center;
+  .filter-input {
+    background: var(--bg1); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 11px;
+    padding: 7px 10px; border-radius: 2px; outline: none;
+    transition: border-color .15s; width: 180px;
   }
+  .filter-input:focus { border-color: var(--cyan); }
+  .filter-input::placeholder { color: var(--muted); }
 
-  .pipe-node:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .pipe-node.selected { border-color: var(--accent); background: var(--surface2); box-shadow: 0 0 24px rgba(0,212,255,0.12); }
-
-  .pipe-arrow {
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
-    color: var(--muted);
-    font-size: 20px;
-    flex-shrink: 0;
+  .feed-header {
+    display: grid;
+    grid-template-columns: 80px 130px 1fr 80px 100px 90px;
+    gap: 8px; padding: 7px 18px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
   }
-
-  .pipe-arrow.split {
-    flex-direction: column;
-    gap: 4px;
-    font-size: 14px;
+  .feed-rows { max-height: 380px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+  .feed-row {
+    display: grid;
+    grid-template-columns: 80px 130px 1fr 80px 100px 90px;
+    gap: 8px; padding: 9px 18px;
+    border-bottom: 1px solid rgba(15,37,64,.5);
+    font-family: var(--mono); font-size: 11px;
+    transition: background .1s;
+    cursor: default;
   }
+  .feed-row:hover { background: rgba(0,240,255,.03); }
+  .feed-row .col-time   { color: var(--muted); }
+  .feed-row .col-type   { color: var(--cyan); }
+  .feed-row .col-source { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .feed-row .col-id     { color: var(--muted); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .pipe-icon {
-    font-size: 28px;
-    margin-bottom: 10px;
-    display: block;
+  .pagination { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .page-label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .events-total { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+  /* ── BADGES ── */
+  .badge {
+    font-family: var(--mono); font-size: 9px;
+    padding: 2px 7px; border-radius: 2px;
+    text-transform: uppercase; letter-spacing: .5px;
+    display: inline-block; border: 1px solid;
   }
+  .badge-processed { color: var(--green);  border-color: rgba(0,255,159,.3);  background: rgba(0,255,159,.08); }
+  .badge-queued    { color: var(--cyan);   border-color: rgba(0,240,255,.3);  background: rgba(0,240,255,.08); }
+  .badge-failed    { color: var(--red);    border-color: rgba(255,23,68,.3);  background: rgba(255,23,68,.08); }
+  .badge-processing{ color: var(--amber);  border-color: rgba(255,170,0,.3);  background: rgba(255,170,0,.08); }
+  .badge-replayed  { color: var(--purple); border-color: rgba(213,0,249,.3);  background: rgba(213,0,249,.08); }
 
-  .pipe-label {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: 0.3px;
+  .priority-critical { color: var(--red); }
+  .priority-high     { color: var(--amber); }
+  .priority-normal   { color: var(--muted); }
+  .priority-low      { color: var(--muted); opacity: .5; }
+
+  /* ── DLQ ── */
+  .dlq-toolbar { display: flex; align-items: center; margin-bottom: 14px; }
+  .dlq-description { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  .dlq-rows { max-height: 420px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
+  .dlq-item { padding: 14px 18px; border-bottom: 1px solid rgba(15,37,64,.5); }
+  .dlq-item-type { font-family: var(--mono); font-size: 12px; color: var(--red); font-weight: 500; margin-bottom: 4px; }
+  .dlq-item-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .dlq-item-reason { font-family: var(--mono); font-size: 10px; color: var(--amber); margin-bottom: 8px; }
+
+  .replay-one-btn {
+    font-family: var(--mono); font-size: 10px;
+    background: none; border: 1px solid rgba(255,170,0,.4);
+    color: var(--amber); padding: 4px 12px; border-radius: 2px;
+    cursor: pointer; letter-spacing: .5px; transition: all .15s;
   }
+  .replay-one-btn:hover { background: rgba(255,170,0,.12); }
 
-  .pipe-tech {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 4px;
-    letter-spacing: 0.8px;
+  .replay-all-btn {
+    font-family: var(--mono); font-size: 10px;
+    background: rgba(255,170,0,.08); border: 1px solid rgba(255,170,0,.4);
+    color: var(--amber); padding: 6px 18px; border-radius: 2px;
+    cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+    transition: all .15s; margin-left: auto;
+  }
+  .replay-all-btn:hover { background: rgba(255,170,0,.18); }
+
+  /* ── INGEST FORM ── */
+  .ingest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+  .form-input {
+    background: var(--bg2); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 9px 12px; border-radius: 2px; outline: none;
+    transition: border-color .15s; width: 100%;
+  }
+  .form-input:focus { border-color: var(--cyan); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .form-select {
+    background: var(--bg2); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 9px 12px; border-radius: 2px; outline: none;
+    transition: border-color .15s; width: 100%; cursor: pointer;
+  }
+  .form-select:focus { border-color: var(--cyan); }
+  .form-select option { background: var(--bg2); }
+
+  .form-textarea {
+    background: var(--bg2); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 9px 12px; border-radius: 2px; outline: none;
+    transition: border-color .15s; width: 100%; resize: vertical; min-height: 80px;
+  }
+  .form-textarea:focus { border-color: var(--cyan); }
+
+  .send-event-btn {
+    font-family: var(--display); font-size: 11px; font-weight: 700;
+    background: rgba(0,240,255,.08); border: 1px solid var(--cyan);
+    color: var(--cyan); padding: 11px 24px; border-radius: 2px;
+    cursor: pointer; letter-spacing: 2px; text-transform: uppercase;
+    transition: all .15s; margin-top: 4px;
+  }
+  .send-event-btn:hover { background: rgba(0,240,255,.16); box-shadow: 0 0 24px rgba(0,240,255,.2); }
+
+  .send-result {
+    font-family: var(--mono); font-size: 11px;
+    padding: 10px 14px; border-radius: 2px; margin-top: 10px;
+    display: none; line-height: 1.5;
+  }
+  .send-result.success { color: var(--green); background: rgba(0,255,159,.07); border: 1px solid rgba(0,255,159,.25); }
+  .send-result.failure { color: var(--red);   background: rgba(255,23,68,.07);  border: 1px solid rgba(255,23,68,.25); }
+
+  .preset-list { display: flex; flex-direction: column; gap: 8px; }
+  .preset-btn {
+    font-family: var(--mono); font-size: 11px;
+    background: none; border: 1px solid var(--border2);
+    color: var(--text); padding: 10px 14px; border-radius: 2px;
+    cursor: pointer; text-align: left; letter-spacing: .5px;
+    transition: all .15s;
+  }
+  .preset-btn:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(0,240,255,.05); }
+  .preset-btn.batch-btn { color: var(--cyan); border-color: rgba(0,240,255,.35); }
+
+  /* ── HEALTH ── */
+  .health-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .health-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 3px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .health-icon { font-size: 24px; }
+  .health-name { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+  .health-status { font-family: var(--display); font-size: 13px; font-weight: 700; }
+  .health-status.ok    { color: var(--green); }
+  .health-status.error { color: var(--red); }
+
+  .connection-info { display: flex; flex-direction: column; gap: 10px; }
+  .connection-url { font-family: var(--mono); font-size: 11px; color: var(--cyan); word-break: break-all; }
+  .link-btn {
+    font-family: var(--mono); font-size: 10px;
+    background: none; border: 1px solid var(--border2);
+    color: var(--muted); padding: 8px; border-radius: 2px;
+    cursor: pointer; text-align: center; letter-spacing: 1px;
+    text-decoration: none; display: block; transition: all .15s;
     text-transform: uppercase;
   }
+  .link-btn:hover { color: var(--cyan); border-color: var(--cyan); }
 
-  .pipe-status {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--accent2);
-    box-shadow: 0 0 6px var(--accent2);
-    animation: pulse 2s infinite;
+  /* ── CONFIG OVERLAY ── */
+  .overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,.85); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
   }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+  .overlay.visible { display: flex; }
+  .overlay-box {
+    background: var(--bg1); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 28px; width: 460px;
   }
-
-  /* ── DETAIL PANEL ── */
-  .detail-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 32px;
-    min-height: 280px;
-    transition: all 0.2s;
-  }
-
-  .detail-panel h2 {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--accent);
+  .overlay-title {
+    font-family: var(--display); font-size: 13px; font-weight: 700;
+    color: var(--cyan); letter-spacing: 2px; text-transform: uppercase;
     margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
   }
+  .overlay-actions { display: flex; gap: 10px; margin-top: 18px; }
 
-  .detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
+  /* ── EMPTY / TOAST ── */
+  .empty-state { padding: 32px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    font-family: var(--mono); font-size: 12px;
+    padding: 10px 18px; border-radius: 3px;
+    background: var(--bg1); border: 1px solid var(--border2);
+    color: var(--text); pointer-events: none;
+    opacity: 0; transform: translateY(6px); transition: all .25s;
   }
+  #toast.visible { opacity: 1; transform: translateY(0); }
 
-  .detail-item {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 16px;
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  @media (max-width: 1100px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .row-2-1, .row-3 { grid-template-columns: 1fr 1fr; }
   }
-
-  .detail-item-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
+  @media (max-width: 700px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .row-2-1, .row-3, .row-2 { grid-template-columns: 1fr; }
+    .ingest-grid { grid-template-columns: 1fr; }
   }
-
-  .detail-item-value {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.5;
-  }
-
-  .tag {
-    display: inline-block;
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 2px;
-    margin: 2px;
-    background: rgba(0,212,255,0.1);
-    border: 1px solid rgba(0,212,255,0.25);
-    color: var(--accent);
-  }
-
-  .tag.green { background: rgba(0,255,157,0.1); border-color: rgba(0,255,157,0.25); color: var(--accent2); }
-  .tag.yellow { background: rgba(255,184,0,0.1); border-color: rgba(255,184,0,0.25); color: var(--warn); }
-  .tag.red { background: rgba(255,71,87,0.1); border-color: rgba(255,71,87,0.25); color: var(--danger); }
-
-  /* ── ENDPOINTS TABLE ── */
-  .section-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--muted);
-    margin-bottom: 16px;
-    margin-top: 36px;
-  }
-
-  .endpoint-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-
-  .endpoint-table th {
-    text-align: left;
-    padding: 8px 16px;
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--muted);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .endpoint-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(30,45,69,0.5);
-    vertical-align: top;
-  }
-
-  .endpoint-table tr:hover td { background: rgba(15,21,32,0.6); }
-
-  .method {
-    font-weight: 600;
-    font-size: 11px;
-    padding: 2px 7px;
-    border-radius: 2px;
-    display: inline-block;
-  }
-
-  .method.POST { background: rgba(0,255,157,0.12); color: #00ff9d; }
-  .method.GET  { background: rgba(0,212,255,0.12); color: #00d4ff; }
-
-  .path { color: var(--text); }
-  .desc { color: var(--muted); font-size: 11px; }
-
-  /* ── SCHEMA ── */
-  .schema-block {
-    background: #060a10;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 24px;
-    font-family: var(--mono);
-    font-size: 12px;
-    line-height: 1.8;
-    overflow-x: auto;
-    white-space: pre;
-  }
-
-  .sql-keyword { color: #ff7eb6; }
-  .sql-type    { color: #00d4ff; }
-  .sql-string  { color: #00ff9d; }
-  .sql-comment { color: #3a5070; }
-
-  /* ── METRICS PANEL ── */
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-
-  .metric-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 20px;
-    text-align: center;
-  }
-
-  .metric-value {
-    font-family: var(--mono);
-    font-size: 32px;
-    font-weight: 300;
-    color: var(--accent);
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-
-  .metric-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--muted);
-  }
-
-  .flow-diagram {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 32px;
-    font-family: var(--mono);
-    font-size: 12px;
-    line-height: 2.4;
-    color: var(--text);
-  }
-
-  .flow-line { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
-  .flow-box {
-    padding: 4px 12px;
-    border-radius: 3px;
-    border: 1px solid;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-  .flow-box.blue { border-color: rgba(0,212,255,0.4); color: var(--accent); background: rgba(0,212,255,0.06); }
-  .flow-box.green { border-color: rgba(0,255,157,0.4); color: var(--accent2); background: rgba(0,255,157,0.06); }
-  .flow-box.red { border-color: rgba(255,71,87,0.4); color: var(--danger); background: rgba(255,71,87,0.06); }
-  .flow-box.yellow { border-color: rgba(255,184,0,0.4); color: var(--warn); background: rgba(255,184,0,0.06); }
-  .flow-arrow { color: var(--muted); font-size: 16px; }
-  .flow-indent { margin-left: 40px; }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">Sentinel<span>Stream</span></div>
-  <div class="badge">v1.0</div>
-  <nav>
-    <button class="active" onclick="showTab('pipeline', this)">Pipeline</button>
-    <button onclick="showTab('endpoints', this)">API</button>
-    <button onclick="showTab('schema', this)">Schema</button>
-    <button onclick="showTab('flow', this)">Event Flow</button>
-    <button onclick="showTab('structure', this)">Structure</button>
-  </nav>
-</header>
+<div class="bg-grid"></div>
+<div class="bg-scan"></div>
 
-<main>
+<div id="app">
 
-<!-- ── PIPELINE TAB ── -->
-<div class="tab active" id="tab-pipeline">
-
-  <div class="pipeline">
-    <div class="pipe-node selected" id="node-producer" onclick="selectNode('producer')">
-      <div class="pipe-status"></div>
-      <span class="pipe-icon">📡</span>
-      <div class="pipe-label">Producer</div>
-      <div class="pipe-tech">HTTP / SDK</div>
+  <!-- HEADER -->
+  <header>
+    <div class="wordmark">Sentinel<span>Stream</span></div>
+    <div class="sep"></div>
+    <div class="status-chip online" id="chip-api"><div class="pulse"></div>API</div>
+    <div class="status-chip online" id="chip-db"><div class="pulse"></div>Postgres</div>
+    <div class="status-chip online" id="chip-redis"><div class="pulse"></div>Redis</div>
+    <div class="sep"></div>
+    <div class="clock" id="clock">--:--:--</div>
+    <div class="hdr-right">
+      <div class="live-badge"><div class="live-dot"></div>Live</div>
+      <button class="icon-btn" onclick="openConfig()">⚙ Config</button>
+      <button class="icon-btn" onclick="fetchAll()">↺ Refresh</button>
     </div>
+  </header>
 
-    <div class="pipe-arrow">→</div>
+  <!-- NAV -->
+  <div class="nav-bar">
+    <button class="nav-item active" onclick="switchPage('overview', this)">Overview</button>
+    <button class="nav-item" onclick="switchPage('events', this)">Event Feed</button>
+    <button class="nav-item" onclick="switchPage('dlq', this)">Dead Letter Queue</button>
+    <button class="nav-item" onclick="switchPage('ingest', this)">Ingest Event</button>
+    <button class="nav-item" onclick="switchPage('health', this)">Health</button>
+  </div>
 
-    <div class="pipe-node" id="node-queue" onclick="selectNode('queue')">
-      <div class="pipe-status"></div>
-      <span class="pipe-icon">📬</span>
-      <div class="pipe-label">Queue</div>
-      <div class="pipe-tech">Redis LIST</div>
-    </div>
+  <!-- ═══════════════════════ PAGE: OVERVIEW ═══════════════════════ -->
+  <div class="page active" id="page-overview">
 
-    <div class="pipe-arrow">→</div>
-
-    <div class="pipe-node" id="node-processor" onclick="selectNode('processor')">
-      <div class="pipe-status"></div>
-      <span class="pipe-icon">⚙️</span>
-      <div class="pipe-label">Processor</div>
-      <div class="pipe-tech">Async Worker</div>
-    </div>
-
-    <div class="pipe-arrow split">
-      <span style="color:#00ff9d">→ OK</span>
-      <span style="color:#ff4757">→ FAIL</span>
-    </div>
-
-    <div style="display:flex;flex-direction:column;gap:12px;flex:1;min-width:160px">
-      <div class="pipe-node" id="node-storage" onclick="selectNode('storage')">
-        <div class="pipe-status"></div>
-        <span class="pipe-icon">🗄️</span>
-        <div class="pipe-label">Storage</div>
-        <div class="pipe-tech">PostgreSQL</div>
+    <div class="kpi-row">
+      <div class="kpi-card" style="--accent: var(--cyan)">
+        <div class="kpi-label">Total Events</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-sub">all time ingested</div>
       </div>
-      <div class="pipe-node" style="border-color:#ff4757" id="node-dlq" onclick="selectNode('dlq')">
-        <span class="pipe-icon">⚠️</span>
-        <div class="pipe-label">Dead Letter Q</div>
-        <div class="pipe-tech">Redis + PG</div>
+      <div class="kpi-card" style="--accent: var(--green)">
+        <div class="kpi-label">Processed / hr</div>
+        <div class="kpi-value" id="kpi-processed">—</div>
+        <div class="kpi-sub">last 60 minutes</div>
+      </div>
+      <div class="kpi-card" style="--accent: var(--red)">
+        <div class="kpi-label">Failed / hr</div>
+        <div class="kpi-value" id="kpi-failed">—</div>
+        <div class="kpi-sub">last 60 minutes</div>
+      </div>
+      <div class="kpi-card" style="--accent: var(--amber)">
+        <div class="kpi-label">Queue Depth</div>
+        <div class="kpi-value" id="kpi-queue">—</div>
+        <div class="kpi-sub">main queue</div>
+      </div>
+      <div class="kpi-card" style="--accent: var(--purple)">
+        <div class="kpi-label">DLQ Depth</div>
+        <div class="kpi-value" id="kpi-dlq">—</div>
+        <div class="kpi-sub">dead letters</div>
+      </div>
+      <div class="kpi-card" style="--accent: var(--blue)">
+        <div class="kpi-label">Throughput</div>
+        <div class="kpi-value" id="kpi-tput" style="font-size: 17px; padding-top: 5px">—</div>
+        <div class="kpi-sub">events / second</div>
       </div>
     </div>
 
-    <div class="pipe-arrow">→</div>
+    <div class="row-2-1">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Throughput — Live Chart</div>
+          <span class="panel-pill badge badge-queued" id="tput-label" style="font-size:9px">0.0000 ev/s</span>
+        </div>
+        <div class="panel-body" style="padding: 12px 16px 8px">
+          <canvas id="throughput-chart"></canvas>
+        </div>
+      </div>
 
-    <div class="pipe-node" id="node-dashboard" onclick="selectNode('dashboard')">
-      <div class="pipe-status"></div>
-      <span class="pipe-icon">📊</span>
-      <div class="pipe-label">Dashboard</div>
-      <div class="pipe-tech">FastAPI /metrics</div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Status Breakdown</div></div>
+        <div class="panel-body">
+          <div class="breakdown-list" id="breakdown-list">
+            <div class="empty-state" style="padding: 10px">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row-3">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Event Type Distribution</div></div>
+        <div class="panel-body">
+          <div class="type-list" id="type-list">
+            <div class="empty-state" style="padding: 10px">No events yet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Queue Depths</div></div>
+        <div class="panel-body">
+          <div class="gauge-list">
+            <div class="gauge-item">
+              <div class="gauge-header">
+                <span class="gauge-name">Main Queue</span>
+                <span class="gauge-val" id="gauge-main-val">0</span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" id="gauge-main-fill" style="width:0%; background: linear-gradient(90deg, rgba(0,188,212,.5), var(--cyan))"></div>
+              </div>
+            </div>
+            <div class="gauge-item">
+              <div class="gauge-header">
+                <span class="gauge-name">Dead Letter</span>
+                <span class="gauge-val" id="gauge-dlq-val">0</span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" id="gauge-dlq-fill" style="width:0%; background: linear-gradient(90deg, rgba(255,23,68,.5), var(--red))"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Activity Log</div></div>
+        <div class="activity-log" id="activity-log">
+          <div class="empty-state">No activity yet</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════ PAGE: EVENTS ═══════════════════════ -->
+  <div class="page" id="page-events">
+
+    <div class="feed-filters">
+      <select class="filter-select" id="filter-status" onchange="evPage=1; fetchEvents()" style="width: 150px">
+        <option value="">All Statuses</option>
+        <option value="queued">Queued</option>
+        <option value="processing">Processing</option>
+        <option value="processed">Processed</option>
+        <option value="failed">Failed</option>
+        <option value="replayed">Replayed</option>
+      </select>
+      <select class="filter-select" id="filter-priority" onchange="evPage=1; fetchEvents()" style="width: 150px">
+        <option value="">All Priorities</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="normal">Normal</option>
+        <option value="low">Low</option>
+      </select>
+      <input class="filter-input" id="filter-type" placeholder="Filter by event type…" oninput="debounceEvents()">
+      <span class="events-total" id="events-total">— events</span>
+    </div>
+
+    <div class="panel">
+      <div class="feed-header">
+        <span>Time</span>
+        <span>Event Type</span>
+        <span>Source</span>
+        <span>Priority</span>
+        <span>Status</span>
+        <span>Event ID</span>
+      </div>
+      <div class="feed-rows" id="feed-rows">
+        <div class="empty-state">Loading events…</div>
+      </div>
+    </div>
+
+    <div class="pagination">
+      <button class="icon-btn" id="btn-prev" onclick="evPage--; fetchEvents()" disabled>← Prev</button>
+      <span class="page-label" id="page-label">Page 1</span>
+      <button class="icon-btn" id="btn-next" onclick="evPage++; fetchEvents()">Next →</button>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════ PAGE: DLQ ═══════════════════════ -->
+  <div class="page" id="page-dlq">
+
+    <div class="dlq-toolbar">
+      <div class="dlq-description">Dead Letter Queue — events that failed all retry attempts</div>
+      <button class="replay-all-btn" onclick="replayAll()">↺ Replay All Failed Events</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Failed Events</div>
+        <span class="panel-pill badge badge-failed" id="dlq-count-pill">0 entries</span>
+      </div>
+      <div class="dlq-rows" id="dlq-rows">
+        <div class="empty-state">No failed events — queue is clean ✓</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════ PAGE: INGEST ═══════════════════════ -->
+  <div class="page" id="page-ingest">
+    <div class="row-2-1">
+
+      <!-- Send form -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Send Event to Pipeline</div></div>
+        <div class="panel-body">
+          <div class="ingest-grid">
+            <div class="form-group">
+              <label class="form-label">Event Type *</label>
+              <input class="form-input" id="in-type" value="user_action" placeholder="e.g. user_action, payment">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Source *</label>
+              <input class="form-input" id="in-source" value="dashboard" placeholder="e.g. web-app">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select class="form-select" id="in-priority">
+                <option value="normal">Normal</option>
+                <option value="low">Low</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">External ID (idempotency)</label>
+              <input class="form-input" id="in-extid" placeholder="optional unique key">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 14px">
+            <label class="form-label">Payload (JSON) *</label>
+            <textarea class="form-textarea" id="in-payload">{"user_id": "u_001", "action": "login"}</textarea>
+          </div>
+          <button class="send-event-btn" onclick="submitEvent()">► Send Event</button>
+          <div class="send-result" id="send-result"></div>
+        </div>
+      </div>
+
+      <!-- Quick presets -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Quick Fire Presets</div></div>
+        <div class="panel-body">
+          <div style="font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px">
+            Click to load a preset, then hit Send
+          </div>
+          <div class="preset-list">
+            <button class="preset-btn" onclick="loadPreset('login')">📡 User Login</button>
+            <button class="preset-btn" onclick="loadPreset('payment')">💳 Payment — $99.99</button>
+            <button class="preset-btn" onclick="loadPreset('alert')">⚠️ System Alert — Critical</button>
+            <button class="preset-btn" onclick="loadPreset('error')">🔴 Service Error</button>
+            <button class="preset-btn batch-btn" onclick="loadPreset('batch')">📦 Fire Batch of 5 Events</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <div class="detail-panel" id="detail-panel">
-    <h2 id="detail-title">📡 Producer</h2>
-    <div class="detail-grid" id="detail-content"></div>
-  </div>
-</div>
+  <!-- ═══════════════════════ PAGE: HEALTH ═══════════════════════ -->
+  <div class="page" id="page-health">
+    <div class="row-2" style="max-width: 800px">
 
-<!-- ── ENDPOINTS TAB ── -->
-<div class="tab" id="tab-endpoints">
-  <p class="section-title">REST API Endpoints</p>
-  <table class="endpoint-table">
-    <thead>
-      <tr>
-        <th>Method</th><th>Path</th><th>Description</th><th>Tags</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td><span class="method POST">POST</span></td><td class="path">/api/v1/events</td><td class="desc">Ingest a single event into the pipeline</td><td><span class="tag green">202</span><span class="tag">idempotent</span></td></tr>
-      <tr><td><span class="method POST">POST</span></td><td class="path">/api/v1/events/batch</td><td class="desc">Batch ingest up to 500 events atomically</td><td><span class="tag green">202</span><span class="tag">bulk</span></td></tr>
-      <tr><td><span class="method GET">GET</span></td><td class="path">/api/v1/events</td><td class="desc">List events with filtering + pagination</td><td><span class="tag">paginated</span><span class="tag">filterable</span></td></tr>
-      <tr><td><span class="method GET">GET</span></td><td class="path">/api/v1/events/{id}</td><td class="desc">Fetch a single event by UUID</td><td><span class="tag">200 / 404</span></td></tr>
-      <tr><td><span class="method GET">GET</span></td><td class="path">/api/v1/events/dlq</td><td class="desc">List Dead Letter Queue entries</td><td><span class="tag red">DLQ</span></td></tr>
-      <tr><td><span class="method POST">POST</span></td><td class="path">/api/v1/replay</td><td class="desc">Replay specific DLQ events by ID list</td><td><span class="tag yellow">replay</span></td></tr>
-      <tr><td><span class="method POST">POST</span></td><td class="path">/api/v1/replay/all</td><td class="desc">Replay all pending DLQ events</td><td><span class="tag yellow">bulk replay</span></td></tr>
-      <tr><td><span class="method GET">GET</span></td><td class="path">/api/v1/metrics</td><td class="desc">Processing stats: throughput, failure rate</td><td><span class="tag">monitoring</span></td></tr>
-      <tr><td><span class="method GET">GET</span></td><td class="path">/api/v1/metrics/queue</td><td class="desc">Current Redis queue depths</td><td><span class="tag">monitoring</span></td></tr>
-      <tr><td><span class="method GET">GET</span></td><td class="path">/health</td><td class="desc">Liveness + readiness probe (k8s compatible)</td><td><span class="tag green">k8s</span></td></tr>
-    </tbody>
-  </table>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Service Health</div></div>
+        <div class="panel-body">
+          <div class="health-cards">
+            <div class="health-card">
+              <div class="health-icon">🚀</div>
+              <div>
+                <div class="health-name">API Server</div>
+                <div class="health-status ok" id="hc-api">Checking…</div>
+              </div>
+            </div>
+            <div class="health-card">
+              <div class="health-icon">🐘</div>
+              <div>
+                <div class="health-name">PostgreSQL</div>
+                <div class="health-status ok" id="hc-postgres">Checking…</div>
+              </div>
+            </div>
+            <div class="health-card">
+              <div class="health-icon">🔴</div>
+              <div>
+                <div class="health-name">Redis</div>
+                <div class="health-status ok" id="hc-redis">Checking…</div>
+              </div>
+            </div>
+            <div class="health-card">
+              <div class="health-icon">⚙️</div>
+              <div>
+                <div class="health-name">Worker</div>
+                <div class="health-status ok" id="hc-worker">Active</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <p class="section-title" style="margin-top:40px">Query Parameters — GET /api/v1/events</p>
-  <table class="endpoint-table">
-    <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
-    <tbody>
-      <tr><td class="path">status</td><td class="desc">enum</td><td class="desc">queued | processing | processed | failed | replayed</td></tr>
-      <tr><td class="path">event_type</td><td class="desc">string</td><td class="desc">Filter by event type slug</td></tr>
-      <tr><td class="path">source</td><td class="desc">string</td><td class="desc">Filter by originating service</td></tr>
-      <tr><td class="path">priority</td><td class="desc">enum</td><td class="desc">low | normal | high | critical</td></tr>
-      <tr><td class="path">page</td><td class="desc">int ≥ 1</td><td class="desc">Page number (default: 1)</td></tr>
-      <tr><td class="path">page_size</td><td class="desc">int 1–500</td><td class="desc">Results per page (default: 50)</td></tr>
-    </tbody>
-  </table>
-</div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">API Connection</div></div>
+        <div class="panel-body">
+          <div class="connection-info">
+            <div>
+              <div style="font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px">Connected Endpoint</div>
+              <div class="connection-url" id="health-url">—</div>
+            </div>
+            <a class="link-btn" id="link-swagger" href="#" target="_blank">Open Swagger UI ↗</a>
+            <a class="link-btn" id="link-health" href="#" target="_blank">View /health JSON ↗</a>
+            <a class="link-btn" id="link-docs" href="#" target="_blank">View /docs ↗</a>
+          </div>
+        </div>
+      </div>
 
-<!-- ── SCHEMA TAB ── -->
-<div class="tab" id="tab-schema">
-  <p class="section-title">PostgreSQL Schema</p>
-  <div class="schema-block"><span class="sql-comment">-- ─────────────────────────────────────────────
--- TABLE: events
--- Primary store for all pipeline events
--- ─────────────────────────────────────────────</span>
-<span class="sql-keyword">CREATE TABLE</span> events (
-  id               <span class="sql-type">UUID</span>           <span class="sql-keyword">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
-  external_id      <span class="sql-type">VARCHAR(255)</span>   <span class="sql-keyword">UNIQUE</span>,                <span class="sql-comment">-- idempotency key</span>
-  event_type       <span class="sql-type">VARCHAR(100)</span>   <span class="sql-keyword">NOT NULL</span>,
-  source           <span class="sql-type">VARCHAR(100)</span>   <span class="sql-keyword">NOT NULL</span>,
-  priority         <span class="sql-type">eventpriority</span>  <span class="sql-keyword">NOT NULL DEFAULT</span> <span class="sql-string">'normal'</span>,
-  payload          <span class="sql-type">JSONB</span>          <span class="sql-keyword">NOT NULL</span>,
-  metadata         <span class="sql-type">JSONB</span>,
-  status           <span class="sql-type">eventstatus</span>    <span class="sql-keyword">NOT NULL DEFAULT</span> <span class="sql-string">'queued'</span>,
-  retry_count      <span class="sql-type">INTEGER</span>        <span class="sql-keyword">NOT NULL DEFAULT</span> 0,
-  error_message    <span class="sql-type">TEXT</span>,
-  processor_id     <span class="sql-type">VARCHAR(100)</span>,   <span class="sql-comment">-- hostname:pid of the worker</span>
-  created_at       <span class="sql-type">TIMESTAMPTZ</span>    <span class="sql-keyword">NOT NULL DEFAULT</span> now(),
-  updated_at       <span class="sql-type">TIMESTAMPTZ</span>    <span class="sql-keyword">NOT NULL DEFAULT</span> now(),
-  processed_at     <span class="sql-type">TIMESTAMPTZ</span>
-);
-
-<span class="sql-keyword">CREATE INDEX</span> ix_events_status          <span class="sql-keyword">ON</span> events (status);
-<span class="sql-keyword">CREATE INDEX</span> ix_events_event_type      <span class="sql-keyword">ON</span> events (event_type);
-<span class="sql-keyword">CREATE INDEX</span> ix_events_source          <span class="sql-keyword">ON</span> events (source);
-<span class="sql-keyword">CREATE INDEX</span> ix_events_created_at      <span class="sql-keyword">ON</span> events (created_at);
-<span class="sql-keyword">CREATE INDEX</span> ix_events_priority_status <span class="sql-keyword">ON</span> events (priority, status);
-
-<span class="sql-comment">-- ─────────────────────────────────────────────
--- TABLE: dead_letter_queue
--- Persistent record of exhausted-retry events
--- ─────────────────────────────────────────────</span>
-<span class="sql-keyword">CREATE TABLE</span> dead_letter_queue (
-  id               <span class="sql-type">UUID</span>           <span class="sql-keyword">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
-  original_event_id <span class="sql-type">UUID</span>,                            <span class="sql-comment">-- soft FK to events</span>
-  event_type       <span class="sql-type">VARCHAR(100)</span>   <span class="sql-keyword">NOT NULL</span>,
-  source           <span class="sql-type">VARCHAR(100)</span>   <span class="sql-keyword">NOT NULL</span>,
-  payload          <span class="sql-type">JSONB</span>          <span class="sql-keyword">NOT NULL</span>,
-  failure_reason   <span class="sql-type">TEXT</span>           <span class="sql-keyword">NOT NULL</span>,
-  retry_count      <span class="sql-type">INTEGER</span>        <span class="sql-keyword">NOT NULL DEFAULT</span> 0,
-  last_error       <span class="sql-type">TEXT</span>,
-  replayed         <span class="sql-type">BOOLEAN</span>        <span class="sql-keyword">NOT NULL DEFAULT</span> <span class="sql-string">FALSE</span>,
-  replayed_at      <span class="sql-type">TIMESTAMPTZ</span>,
-  replay_event_id  <span class="sql-type">UUID</span>,                            <span class="sql-comment">-- new event created on replay</span>
-  created_at       <span class="sql-type">TIMESTAMPTZ</span>    <span class="sql-keyword">NOT NULL DEFAULT</span> now(),
-  updated_at       <span class="sql-type">TIMESTAMPTZ</span>    <span class="sql-keyword">NOT NULL DEFAULT</span> now()
-);
-
-<span class="sql-keyword">CREATE INDEX</span> ix_dlq_replayed    <span class="sql-keyword">ON</span> dead_letter_queue (replayed);
-<span class="sql-keyword">CREATE INDEX</span> ix_dlq_event_type  <span class="sql-keyword">ON</span> dead_letter_queue (event_type);
-<span class="sql-keyword">CREATE INDEX</span> ix_dlq_created_at  <span class="sql-keyword">ON</span> dead_letter_queue (created_at);
-
-<span class="sql-comment">-- ─────────────────────────────────────────────
--- ENUMS
--- ─────────────────────────────────────────────</span>
-<span class="sql-keyword">CREATE TYPE</span> eventstatus <span class="sql-keyword">AS ENUM</span> (
-  <span class="sql-string">'queued'</span>, <span class="sql-string">'processing'</span>, <span class="sql-string">'processed'</span>, <span class="sql-string">'failed'</span>, <span class="sql-string">'replayed'</span>
-);
-
-<span class="sql-keyword">CREATE TYPE</span> eventpriority <span class="sql-keyword">AS ENUM</span> (
-  <span class="sql-string">'low'</span>, <span class="sql-string">'normal'</span>, <span class="sql-string">'high'</span>, <span class="sql-string">'critical'</span>
-);</div>
-</div>
-
-<!-- ── FLOW TAB ── -->
-<div class="tab" id="tab-flow">
-  <p class="section-title">Event Lifecycle</p>
-  <div class="flow-diagram">
-    <div class="flow-line">
-      <div class="flow-box blue">Producer</div>
-      <div class="flow-arrow">──POST /api/v1/events──→</div>
-      <div class="flow-box blue">FastAPI Ingestion</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓</div>
-      <div class="flow-box green">Idempotency check (external_id)</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓</div>
-      <div class="flow-box blue">Persist to PostgreSQL  status=QUEUED</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓</div>
-      <div class="flow-box blue">RPUSH → Redis sentinel:events</div>
-    </div>
-    <div class="flow-line" style="margin-top:16px">
-      <div class="flow-box yellow">Worker (N replicas)</div>
-      <div class="flow-arrow">──LPOP batch──→</div>
-      <div class="flow-box yellow">ProcessorService</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓ success</div>
-      <div class="flow-box green">UPDATE status=PROCESSED  processed_at=now()</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓ failure (retry &lt; 3)</div>
-      <div class="flow-box yellow">Exponential backoff → re-RPUSH  retry_count++</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓ failure (retry = 3)</div>
-      <div class="flow-box red">INSERT dead_letter_queue  RPUSH sentinel:dlq</div>
-    </div>
-    <div class="flow-line" style="margin-top:16px">
-      <div class="flow-box red">Operator</div>
-      <div class="flow-arrow">──POST /api/v1/replay──→</div>
-      <div class="flow-box yellow">ReplayService</div>
-    </div>
-    <div class="flow-line flow-indent">
-      <div class="flow-arrow">↓</div>
-      <div class="flow-box green">New Event row  dlq.replayed=true → back to queue</div>
     </div>
   </div>
 
-  <p class="section-title">Retry Policy</p>
-  <div class="metrics-grid">
-    <div class="metric-card">
-      <div class="metric-value" style="color:var(--accent2)">3</div>
-      <div class="metric-label">Max Retries</div>
+</div>
+
+<!-- CONFIG OVERLAY -->
+<div class="overlay" id="config-overlay">
+  <div class="overlay-box">
+    <div class="overlay-title">⚙ Configuration</div>
+    <div class="form-group">
+      <label class="form-label">API Base URL</label>
+      <input class="form-input" id="config-url-input" placeholder="https://your-api.railway.app" style="width: 100%">
     </div>
-    <div class="metric-card">
-      <div class="metric-value" style="font-size:24px">2ⁿ sec</div>
-      <div class="metric-label">Backoff (2, 4, 8s)</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-value" style="color:var(--warn)">50</div>
-      <div class="metric-label">Batch Size</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-value" style="color:var(--danger)">DLQ</div>
-      <div class="metric-label">On Exhaustion</div>
+    <div class="overlay-actions">
+      <button class="send-event-btn" onclick="saveConfig()">Save & Reconnect</button>
+      <button class="icon-btn" onclick="closeConfig()">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- ── STRUCTURE TAB ── -->
-<div class="tab" id="tab-structure">
-  <p class="section-title">Project Structure</p>
-  <div class="schema-block"><span class="sql-comment">sentinelstream/
-├── app/
-│   ├── main.py                    # FastAPI app + lifespan
-│   ├── api/
-│   │   └── routes/
-│   │       ├── events.py          # POST/GET /events, /events/dlq
-│   │       ├── metrics.py         # GET /metrics, /metrics/queue
-│   │       ├── replay.py          # POST /replay, /replay/all
-│   │       └── health.py          # GET /health
-│   ├── core/
-│   │   ├── config.py              # Pydantic Settings (env vars)
-│   │   └── logging.py             # Structured JSON logging
-│   ├── db/
-│   │   ├── postgres.py            # Async SQLAlchemy engine + get_db()
-│   │   └── redis_client.py        # Connection pool + queue helpers
-│   ├── models/
-│   │   ├── event.py               # ORM: events table
-│   │   └── dlq.py                 # ORM: dead_letter_queue table
-│   ├── schemas/
-│   │   └── events.py              # Pydantic request/response models
-│   ├── services/
-│   │   ├── ingestion.py           # IngestionService (single + batch)
-│   │   ├── processor.py           # ProcessorService + handler registry
-│   │   └── replay.py              # ReplayService
-│   └── workers/
-│       └── event_worker.py        # Async queue drain + DLQ routing
-├── tests/
-│   └── test_pipeline.py           # pytest-asyncio test suite
-├── scripts/
-│   └── 001_initial_migration.py   # Alembic migration
-├── docker-compose.yml             # Postgres + Redis + API + Worker
-├── Dockerfile
-├── requirements.txt
-└── .env.example</span></div>
-
-  <p class="section-title">Technology Decisions</p>
-  <div class="detail-grid">
-    <div class="detail-item">
-      <div class="detail-item-label">Queue Transport</div>
-      <div class="detail-item-value">Redis LIST (RPUSH/LPOP) — O(1), ordered, in-memory speed with AOF persistence</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-item-label">Dead Letter Queue</div>
-      <div class="detail-item-value">Dual store: Redis list for fast inspection + PostgreSQL for audit trail and replay metadata</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-item-label">Idempotency</div>
-      <div class="detail-item-value">external_id UNIQUE index prevents duplicate ingestion; returns status=duplicate on conflict</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-item-label">Retry Strategy</div>
-      <div class="detail-item-value">Exponential backoff (2ⁿ seconds), max 3 attempts, configurable via RETRY_BACKOFF_BASE env var</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-item-label">Concurrency</div>
-      <div class="detail-item-value">N worker replicas via Docker Compose deploy.replicas; each drains batches of 50 events asynchronously</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-item-label">Observability</div>
-      <div class="detail-item-value">Structured JSON logs with correlation IDs; /health for k8s probes; /metrics for counters and throughput</div>
-    </div>
-  </div>
-</div>
-
-</main>
+<div id="toast"></div>
 
 <script>
-const nodeData = {
-  producer: {
-    title: "📡 Producer",
-    items: [
-      { label: "Transport", value: "POST /api/v1/events  (single)\nPOST /api/v1/events/batch  (up to 500)" },
-      { label: "Idempotency", value: "Pass external_id in payload.\nDuplicate requests return status=duplicate — no double-processing." },
-      { label: "Priority Levels", value: '<span class="tag">low</span><span class="tag">normal</span><span class="tag yellow">high</span><span class="tag red">critical</span>' },
-      { label: "Response", value: "202 Accepted → { event_id, status, queue_position }" },
-    ]
-  },
-  queue: {
-    title: "📬 Redis Queue",
-    items: [
-      { label: "Data structure", value: "Redis LIST — RPUSH to tail, LPOP from head\nO(1) enqueue and dequeue" },
-      { label: "Queue names", value: "sentinel:events  (main)\nsentinel:dlq       (dead letter)" },
-      { label: "Batch draining", value: "Worker pops up to 50 events per cycle via pipeline LPOP" },
-      { label: "Persistence", value: "Redis AOF (appendonly yes) — survives restarts" },
-    ]
-  },
-  processor: {
-    title: "⚙️ Processor Worker",
-    items: [
-      { label: "Handler registry", value: "HANDLER_REGISTRY dict maps event_type → async handler.\nAdd new handlers in app/services/processor.py." },
-      { label: "Retry policy", value: "Attempt 1 → wait 2s → Attempt 2 → wait 4s → Attempt 3 → DLQ\nConfigurable: MAX_RETRY_ATTEMPTS, RETRY_BACKOFF_BASE" },
-      { label: "Concurrency", value: "Scale via Docker Compose replicas or Kubernetes HPA.\nEach worker independently drains the shared queue." },
-      { label: "Signals", value: "SIGTERM / SIGINT trigger graceful shutdown — in-flight batch completes before exit" },
-    ]
-  },
-  storage: {
-    title: "🗄️ PostgreSQL Storage",
-    items: [
-      { label: "Tables", value: "events — all pipeline events with full audit trail\ndead_letter_queue — failed events with replay tracking" },
-      { label: "Async ORM", value: "SQLAlchemy 2.0 async + asyncpg driver\nConnection pool: size=10, overflow=20" },
-      { label: "Indexes", value: "status, event_type, source, created_at, (priority, status)\nFull JSONB payload for ad-hoc queries" },
-      { label: "Migrations", value: "Alembic for schema versioning\nscripts/001_initial_migration.py for initial tables" },
-    ]
-  },
-  dlq: {
-    title: "⚠️ Dead Letter Queue",
-    items: [
-      { label: "Trigger", value: "Event fails 3 consecutive processing attempts" },
-      { label: "Storage", value: "Redis RPUSH sentinel:dlq (fast inspection)\n+ PostgreSQL dead_letter_queue (audit + replay)" },
-      { label: "Replay — targeted", value: "POST /api/v1/replay\n{ dlq_event_ids: [uuid, ...], priority_override: 'high' }" },
-      { label: "Replay — bulk", value: "POST /api/v1/replay/all?limit=500\nRe-ingests all un-replayed DLQ entries" },
-    ]
-  },
-  dashboard: {
-    title: "📊 Dashboard / Metrics",
-    items: [
-      { label: "Health probe", value: "GET /health\n→ postgres: ok|error, redis: ok|error, queue_depths" },
-      { label: "Processing stats", value: "GET /api/v1/metrics\n→ total_events, processed_last_hour, failed_last_hour, throughput/s" },
-      { label: "Queue depths", value: "GET /api/v1/metrics/queue\n→ main_queue_depth, dlq_depth, timestamp" },
-      { label: "Extend with", value: "Prometheus exporter (prometheus-fastapi-instrumentator)\nGrafana dashboard reading /metrics + Redis counters" },
-    ]
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let API_BASE = 'https://angelic-imagination-production.up.railway.app';
+let evPage = 1;
+let evDebounceTimer;
+let lastProcessedCount = null;
+let lastProcessedTime  = null;
+
+const TPUT_POINTS = 30;
+let tputHistory = Array(TPUT_POINTS).fill(0);
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+function openConfig() {
+  document.getElementById('config-url-input').value = API_BASE;
+  document.getElementById('config-overlay').classList.add('visible');
+}
+function closeConfig() {
+  document.getElementById('config-overlay').classList.remove('visible');
+}
+function saveConfig() {
+  const val = document.getElementById('config-url-input').value.trim().replace(/\/$/, '');
+  if (!val) return;
+  API_BASE = val;
+  closeConfig();
+  showToast('API URL updated — reconnecting…', true);
+  fetchAll();
+}
+document.getElementById('config-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeConfig();
+});
+
+// ═══════════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════════
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════════
+// PAGE NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function switchPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'events') fetchEvents();
+  if (name === 'dlq')    fetchDLQ();
+  if (name === 'health') fetchHealthTab();
+}
+
+// ═══════════════════════════════════════════════════════════
+// THROUGHPUT CHART
+// ═══════════════════════════════════════════════════════════
+const chartCanvas = document.getElementById('throughput-chart');
+const chartCtx    = chartCanvas.getContext('2d');
+
+function resizeChart() {
+  const parent = chartCanvas.parentElement.getBoundingClientRect();
+  chartCanvas.width  = parent.width - 32;
+  chartCanvas.height = 130;
+}
+
+function drawChart() {
+  const W = chartCanvas.width;
+  const H = chartCanvas.height;
+  if (!W || !H) return;
+
+  chartCtx.clearRect(0, 0, W, H);
+  const maxVal = Math.max(...tputHistory, 0.001);
+  const stepX  = W / (TPUT_POINTS - 1);
+
+  // Grid lines
+  chartCtx.strokeStyle = 'rgba(15,37,64,.8)';
+  chartCtx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = H - (i / 4) * H;
+    chartCtx.beginPath();
+    chartCtx.moveTo(0, y);
+    chartCtx.lineTo(W, y);
+    chartCtx.stroke();
+    if (i > 0) {
+      chartCtx.fillStyle = 'rgba(74,106,138,.5)';
+      chartCtx.font = '9px Share Tech Mono';
+      chartCtx.fillText((maxVal * i / 4).toFixed(3), 4, y - 3);
+    }
   }
-};
 
-function selectNode(id) {
-  document.querySelectorAll('.pipe-node').forEach(n => n.classList.remove('selected'));
-  const node = document.getElementById('node-' + id);
-  if (node) node.classList.add('selected');
+  // Gradient fill
+  const grad = chartCtx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0,   'rgba(0,240,255,.28)');
+  grad.addColorStop(0.5, 'rgba(0,240,255,.07)');
+  grad.addColorStop(1,   'rgba(0,240,255,0)');
 
-  const data = nodeData[id];
-  if (!data) return;
+  chartCtx.beginPath();
+  chartCtx.moveTo(0, H);
+  tputHistory.forEach((v, i) => {
+    const x = i * stepX;
+    const y = H - (v / maxVal) * (H - 14);
+    i === 0 ? chartCtx.lineTo(x, y) : chartCtx.lineTo(x, y);
+  });
+  chartCtx.lineTo((TPUT_POINTS - 1) * stepX, H);
+  chartCtx.closePath();
+  chartCtx.fillStyle = grad;
+  chartCtx.fill();
 
-  document.getElementById('detail-title').textContent = data.title;
-  const content = document.getElementById('detail-content');
-  content.innerHTML = data.items.map(item => `
-    <div class="detail-item">
-      <div class="detail-item-label">${item.label}</div>
-      <div class="detail-item-value">${item.value.replace(/\n/g, '<br>')}</div>
+  // Line
+  chartCtx.beginPath();
+  chartCtx.strokeStyle = '#00f0ff';
+  chartCtx.lineWidth   = 2;
+  chartCtx.lineJoin    = 'round';
+  tputHistory.forEach((v, i) => {
+    const x = i * stepX;
+    const y = H - (v / maxVal) * (H - 14);
+    i === 0 ? chartCtx.moveTo(x, y) : chartCtx.lineTo(x, y);
+  });
+  chartCtx.stroke();
+
+  // End dot
+  const endX = (TPUT_POINTS - 1) * stepX;
+  const endY = H - (tputHistory[TPUT_POINTS - 1] / maxVal) * (H - 14);
+  chartCtx.beginPath();
+  chartCtx.arc(endX, endY, 4, 0, Math.PI * 2);
+  chartCtx.fillStyle = '#fff';
+  chartCtx.fill();
+  chartCtx.beginPath();
+  chartCtx.arc(endX, endY, 7, 0, Math.PI * 2);
+  chartCtx.strokeStyle = 'rgba(0,240,255,.4)';
+  chartCtx.lineWidth = 2;
+  chartCtx.stroke();
+}
+
+window.addEventListener('resize', () => { resizeChart(); drawChart(); });
+resizeChart();
+drawChart();
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-GB', { hour12: false });
+}
+function formatDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' + formatTime(iso);
+}
+function shortId(id) {
+  return id ? id.slice(0, 8) + '…' : '—';
+}
+function statusBadge(status) {
+  return `<span class="badge badge-${status}">${status}</span>`;
+}
+function priorityLabel(p) {
+  return `<span class="priority-${p}">${p}</span>`;
+}
+
+let toastTimer;
+function showToast(msg, success = true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = success ? 'rgba(0,255,159,.4)' : 'rgba(255,23,68,.4)';
+  el.style.color = success ? 'var(--green)' : 'var(--red)';
+  el.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+function setChip(id, online, label) {
+  const el = document.getElementById(id);
+  el.className = `status-chip ${online ? 'online' : 'offline'}`;
+  el.innerHTML = `<div class="pulse"></div>${label}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HEALTH (header chips)
+// ═══════════════════════════════════════════════════════════
+async function fetchHealth() {
+  try {
+    const res  = await fetch(`${API_BASE}/health`);
+    const data = await res.json();
+    setChip('chip-api',   true,               'API');
+    setChip('chip-db',    data.postgres==='ok','Postgres');
+    setChip('chip-redis', data.redis==='ok',   'Redis');
+    return data;
+  } catch (e) {
+    setChip('chip-api',   false, 'API Offline');
+    setChip('chip-db',    false, 'Postgres');
+    setChip('chip-redis', false, 'Redis');
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HEALTH TAB
+// ═══════════════════════════════════════════════════════════
+async function fetchHealthTab() {
+  const data = await fetchHealth();
+  if (data) {
+    const setCard = (id, ok) => {
+      const el = document.getElementById(id);
+      el.className = `health-status ${ok ? 'ok' : 'error'}`;
+      el.textContent = ok ? 'ONLINE' : 'OFFLINE';
+    };
+    setCard('hc-api',      true);
+    setCard('hc-postgres', data.postgres === 'ok');
+    setCard('hc-redis',    data.redis    === 'ok');
+  }
+  document.getElementById('health-url').textContent = API_BASE;
+  document.getElementById('link-swagger').href = API_BASE + '/docs';
+  document.getElementById('link-health').href  = API_BASE + '/health';
+  document.getElementById('link-docs').href    = API_BASE + '/docs';
+}
+
+// ═══════════════════════════════════════════════════════════
+// METRICS
+// ═══════════════════════════════════════════════════════════
+async function fetchMetrics() {
+  const [mRes, qRes] = await Promise.all([
+    fetch(`${API_BASE}/api/v1/metrics`),
+    fetch(`${API_BASE}/api/v1/metrics/queue`)
+  ]);
+  const m = await mRes.json();
+  const q = await qRes.json();
+
+  // KPI values
+  document.getElementById('kpi-total').textContent     = m.total_events.toLocaleString();
+  document.getElementById('kpi-processed').textContent = m.processed_last_hour.toLocaleString();
+  document.getElementById('kpi-failed').textContent    = m.failed_last_hour.toLocaleString();
+  document.getElementById('kpi-queue').textContent     = q.main_queue_depth.toLocaleString();
+  document.getElementById('kpi-dlq').textContent       = q.dlq_depth.toLocaleString();
+  document.getElementById('kpi-tput').textContent      = m.throughput_per_second.toFixed(4);
+  document.getElementById('tput-label').textContent    = m.throughput_per_second.toFixed(4) + ' ev/s';
+
+  // Throughput history
+  const now = Date.now();
+  if (lastProcessedCount !== null && lastProcessedTime !== null) {
+    const dt    = (now - lastProcessedTime) / 1000;
+    const delta = Math.max(m.processed_last_hour - lastProcessedCount, 0);
+    tputHistory.push(dt > 0 ? delta / dt : 0);
+    if (tputHistory.length > TPUT_POINTS) tputHistory.shift();
+  }
+  lastProcessedCount = m.processed_last_hour;
+  lastProcessedTime  = now;
+  resizeChart();
+  drawChart();
+
+  // Queue gauges
+  const total = Math.max(q.main_queue_depth + q.dlq_depth, 1);
+  document.getElementById('gauge-main-val').textContent  = q.main_queue_depth;
+  document.getElementById('gauge-dlq-val').textContent   = q.dlq_depth;
+  document.getElementById('gauge-main-fill').style.width = Math.min(q.main_queue_depth / total * 100, 100) + '%';
+  document.getElementById('gauge-dlq-fill').style.width  = Math.min(q.dlq_depth  / total * 100, 100) + '%';
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════════════════
+function debounceEvents() {
+  clearTimeout(evDebounceTimer);
+  evDebounceTimer = setTimeout(() => { evPage = 1; fetchEvents(); }, 400);
+}
+
+async function fetchEvents() {
+  const status   = (document.getElementById('filter-status')   || {}).value || '';
+  const priority = (document.getElementById('filter-priority') || {}).value || '';
+  const type     = (document.getElementById('filter-type')     || {}).value || '';
+
+  let url = `${API_BASE}/api/v1/events?page=${evPage}&page_size=25`;
+  if (status)   url += `&status=${status}`;
+  if (priority) url += `&priority=${priority}`;
+  if (type)     url += `&event_type=${encodeURIComponent(type)}`;
+
+  const res  = await fetch(url);
+  const data = await res.json();
+  const items = data.items || [];
+
+  document.getElementById('events-total').textContent = `${(data.total || 0).toLocaleString()} events`;
+  document.getElementById('page-label').textContent   = `Page ${evPage}`;
+  document.getElementById('btn-prev').disabled        = evPage <= 1;
+  document.getElementById('btn-next').disabled        = items.length < 25;
+
+  // Update overview panels on page 1
+  if (evPage === 1) {
+    updateBreakdown(items);
+    updateTypeChart(items);
+    updateActivityLog(items);
+  }
+
+  // Render feed
+  if (items.length === 0) {
+    document.getElementById('feed-rows').innerHTML = '<div class="empty-state">No events match your filters</div>';
+    return;
+  }
+
+  document.getElementById('feed-rows').innerHTML = items.map(ev => `
+    <div class="feed-row">
+      <span class="col-time">${formatTime(ev.created_at)}</span>
+      <span class="col-type">${ev.event_type}</span>
+      <span class="col-source">${ev.source}</span>
+      <span>${priorityLabel(ev.priority)}</span>
+      <span>${statusBadge(ev.status)}</span>
+      <span class="col-id" title="${ev.id}">${shortId(ev.id)}</span>
     </div>
   `).join('');
 }
 
-function showTab(name, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  btn.classList.add('active');
+function updateBreakdown(items) {
+  const counts = { processed: 0, queued: 0, processing: 0, failed: 0, replayed: 0 };
+  items.forEach(ev => { if (counts[ev.status] !== undefined) counts[ev.status]++; });
+  const total = items.length || 1;
+  const colors = {
+    processed: 'var(--green)', queued: 'var(--cyan)',
+    processing: 'var(--amber)', failed: 'var(--red)', replayed: 'var(--purple)'
+  };
+  document.getElementById('breakdown-list').innerHTML = Object.entries(counts).map(([status, count]) => `
+    <div class="breakdown-item">
+      <div class="breakdown-label">${status}</div>
+      <div class="breakdown-track">
+        <div class="breakdown-fill" style="width: ${(count/total*100).toFixed(1)}%; background: ${colors[status]}"></div>
+      </div>
+      <div class="breakdown-count">${count}</div>
+      <div class="breakdown-pct">${(count/total*100).toFixed(0)}%</div>
+    </div>
+  `).join('');
 }
 
-// Init
-selectNode('producer');
+function updateTypeChart(items) {
+  const typeCounts = {};
+  items.forEach(ev => { typeCounts[ev.event_type] = (typeCounts[ev.event_type] || 0) + 1; });
+  const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+  const maxCount = sorted[0]?.[1] || 1;
+
+  document.getElementById('type-list').innerHTML = sorted.length
+    ? sorted.map(([type, count]) => `
+        <div class="type-item">
+          <div class="type-name">${type}</div>
+          <div class="type-track"><div class="type-fill" style="width: ${(count/maxCount*100).toFixed(1)}%"></div></div>
+          <div class="type-count">${count}</div>
+        </div>
+      `).join('')
+    : '<div class="empty-state" style="padding:10px">No events yet</div>';
+}
+
+function updateActivityLog(items) {
+  const dotColors = {
+    processed: 'var(--green)', queued: 'var(--cyan)',
+    failed: 'var(--red)', processing: 'var(--amber)', replayed: 'var(--purple)'
+  };
+  const recent = items.slice(0, 8);
+  document.getElementById('activity-log').innerHTML = recent.length
+    ? recent.map(ev => `
+        <div class="activity-item">
+          <div class="activity-dot" style="background: ${dotColors[ev.status] || 'var(--muted)'}"></div>
+          <div class="activity-time">${formatTime(ev.created_at)}</div>
+          <div class="activity-type">${ev.event_type}</div>
+          <div class="activity-src">${ev.source}</div>
+        </div>
+      `).join('')
+    : '<div class="empty-state">No activity yet</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// DLQ
+// ═══════════════════════════════════════════════════════════
+async function fetchDLQ() {
+  const res   = await fetch(`${API_BASE}/api/v1/events/dlq?replayed=false&limit=30`);
+  const items = await res.json();
+
+  document.getElementById('dlq-count-pill').textContent = `${items.length} entries`;
+
+  document.getElementById('dlq-rows').innerHTML = items.length
+    ? items.map(ev => `
+        <div class="dlq-item">
+          <div class="dlq-item-type">${ev.event_type}</div>
+          <div class="dlq-item-meta">${ev.source} · retries: ${ev.retry_count} · ${formatDateTime(ev.created_at)}</div>
+          <div class="dlq-item-reason">⚠ ${ev.failure_reason}</div>
+          <button class="replay-one-btn" onclick="replayOne('${ev.id}')">↺ Replay this event</button>
+        </div>
+      `).join('')
+    : '<div class="empty-state">No failed events — queue is clean ✓</div>';
+}
+
+async function replayAll() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/v1/replay/all`, { method: 'POST' });
+    const data = await res.json();
+    showToast(`↺ Replayed ${data.replayed} events`, true);
+    fetchDLQ();
+    fetchAll();
+  } catch (e) {
+    showToast('Replay failed — check API connection', false);
+  }
+}
+
+async function replayOne(id) {
+  try {
+    await fetch(`${API_BASE}/api/v1/replay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dlq_event_ids: [id] })
+    });
+    showToast('↺ Event replayed successfully', true);
+    fetchDLQ();
+  } catch (e) {
+    showToast('Replay failed', false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INGEST
+// ═══════════════════════════════════════════════════════════
+async function submitEvent() {
+  const type   = document.getElementById('in-type').value.trim();
+  const source = document.getElementById('in-source').value.trim();
+  const pri    = document.getElementById('in-priority').value;
+  const extid  = document.getElementById('in-extid').value.trim();
+
+  let payload;
+  try {
+    payload = JSON.parse(document.getElementById('in-payload').value);
+  } catch (e) {
+    showSendResult('✗ Invalid JSON in payload field', false);
+    return;
+  }
+
+  const body = { event_type: type, source, priority: pri, payload };
+  if (extid) body.external_id = extid;
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/v1/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      showSendResult(`✓ Event accepted\nID: ${data.event_id || data.id || '—'}\nStatus: ${data.status}`, true);
+      showToast('Event sent to pipeline ✓', true);
+    } else {
+      showSendResult(`✗ Error ${res.status}: ${JSON.stringify(data)}`, false);
+    }
+  } catch (e) {
+    showSendResult(`✗ Network error: ${e.message}`, false);
+  }
+}
+
+function showSendResult(msg, success) {
+  const el = document.getElementById('send-result');
+  el.textContent = msg;
+  el.className = `send-result ${success ? 'success' : 'failure'}`;
+  el.style.display = 'block';
+}
+
+const PRESETS = {
+  login:   { type: 'user_action',  source: 'web-app',          priority: 'normal',   payload: { user_id: 'u_001', action: 'login' } },
+  payment: { type: 'payment',      source: 'checkout-service', priority: 'high',     payload: { user_id: 'u_001', amount: 99.99, currency: 'USD' } },
+  alert:   { type: 'system_alert', source: 'monitoring',       priority: 'critical', payload: { severity: 'critical', message: 'CPU usage at 95%' } },
+  error:   { type: 'error',        source: 'api-service',      priority: 'high',     payload: { code: 'ERR_503', endpoint: '/api/v1/data', retries: 3 } },
+};
+
+async function loadPreset(name) {
+  if (name === 'batch') {
+    try {
+      const events = [
+        { event_type: 'user_action',  source: 'web-app',    priority: 'normal',   payload: { user_id: 'u_001', action: 'login' } },
+        { event_type: 'payment',      source: 'checkout',   priority: 'high',     payload: { amount: 49.99 } },
+        { event_type: 'system_alert', source: 'monitoring', priority: 'high',     payload: { severity: 'warn' } },
+        { event_type: 'user_action',  source: 'mobile-app', priority: 'normal',   payload: { user_id: 'u_002', action: 'signup' } },
+        { event_type: 'payment',      source: 'checkout',   priority: 'normal',   payload: { amount: 12.00 } },
+      ];
+      const res  = await fetch(`${API_BASE}/api/v1/events/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events })
+      });
+      const data = await res.json();
+      showSendResult(`✓ Batch fired\nAccepted: ${data.accepted}\nFailed: ${data.failed}`, res.ok);
+      showToast(`Batch of 5 events fired ✓`, true);
+    } catch (e) {
+      showSendResult(`✗ ${e.message}`, false);
+    }
+    return;
+  }
+
+  const p = PRESETS[name];
+  if (!p) return;
+  document.getElementById('in-type').value     = p.type;
+  document.getElementById('in-source').value   = p.source;
+  document.getElementById('in-priority').value = p.priority;
+  document.getElementById('in-payload').value  = JSON.stringify(p.payload, null, 2);
+  document.getElementById('send-result').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// MASTER POLL
+// ═══════════════════════════════════════════════════════════
+async function fetchAll() {
+  try {
+    await fetchHealth();
+    await Promise.all([fetchMetrics(), fetchEvents()]);
+    fetchDLQ();
+  } catch (e) {
+    console.error('Poll error:', e);
+  }
+}
+
+// Boot
+fetchAll();
+setInterval(fetchAll, 5000);
 </script>
 </body>
 </html>
