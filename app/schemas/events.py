@@ -37,21 +37,21 @@ class BatchEventIngest(BaseModel):
 
 class EventResponse(BaseModel):
     id: uuid.UUID
-    external_id: Optional[str]
+    external_id: Optional[str] = None
     event_type: str
     source: str
     priority: EventPriority
     payload: dict[str, Any]
-    metadata: Optional[dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = Field(None, alias="metadata_")
     status: EventStatus
     retry_count: int
-    error_message: Optional[str]
-    processor_id: Optional[str]
+    error_message: Optional[str] = None
+    processor_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    processed_at: Optional[datetime]
+    processed_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class IngestResponse(BaseModel):
