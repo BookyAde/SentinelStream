@@ -36,14 +36,14 @@ app = FastAPI(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],      # Allow all origins
+    allow_credentials=False,  # MUST be False when allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Routers
-app.include_router(health.router, prefix="/health", tags=["Health"])
-app.include_router(events.router, prefix="/api/v1/events", tags=["Events"])
-app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["Metrics"])
-app.include_router(replay.router, prefix="/api/v1/replay", tags=["Replay"])
+app.include_router(health.router,   prefix="/health",          tags=["Health"])
+app.include_router(events.router,   prefix="/api/v1/events",   tags=["Events"])
+app.include_router(metrics.router,  prefix="/api/v1/metrics",  tags=["Metrics"])
+app.include_router(replay.router,   prefix="/api/v1/replay",   tags=["Replay"])
