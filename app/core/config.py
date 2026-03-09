@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "SentinelStream"
     DEBUG: bool = False
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    ALLOWED_ORIGINS: List[str] = ["*"]
 
     # PostgreSQL
     POSTGRES_HOST: str = "localhost"
@@ -51,13 +51,18 @@ class Settings(BaseSettings):
     DLQ_NAME: str = "sentinel:dlq"
     PROCESSING_QUEUE_NAME: str = "sentinel:processing"
     MAX_RETRY_ATTEMPTS: int = 3
-    RETRY_BACKOFF_BASE: float = 2.0  # seconds, exponential
+    RETRY_BACKOFF_BASE: float = 2.0
     QUEUE_BATCH_SIZE: int = 50
     WORKER_CONCURRENCY: int = 4
 
+    # Auth / JWT
+    JWT_SECRET: str = "change-this-in-production-use-a-long-random-string"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
     # Monitoring
     METRICS_RETENTION_DAYS: int = 30
-    ALERT_THRESHOLD_DLQ: int = 100  # alert if DLQ exceeds this
+    ALERT_THRESHOLD_DLQ: int = 100
 
     class Config:
         env_file = ".env"

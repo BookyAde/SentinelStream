@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from app.api.routes import events, health, metrics, replay
+from app.api.routes import events, health, metrics, replay, auth
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.postgres import init_db
@@ -44,6 +44,7 @@ app.add_middleware(
 
 # Routers
 app.include_router(health.router,   prefix="/health",          tags=["Health"])
+app.include_router(auth.router,     prefix="/api/v1",          tags=["Auth"])
 app.include_router(events.router,   prefix="/api/v1/events",   tags=["Events"])
 app.include_router(metrics.router,  prefix="/api/v1/metrics",  tags=["Metrics"])
 app.include_router(replay.router,   prefix="/api/v1/replay",   tags=["Replay"])
