@@ -1290,7 +1290,7 @@ async function fetchHealthTab(){
 // METRICS
 // ════════════════════════════════════════
 async function fetchMetrics(){
-  const[mr,qr]=await Promise.all([fetch(`${API}/api/v1/metrics`),fetch(`${API}/api/v1/metrics/queue`)]);
+  const[mr,qr]=await Promise.all([authFetch('/api/v1/metrics'),authFetch('/api/v1/metrics/queue')]);
   const m=await mr.json(),q=await qr.json();
   document.getElementById('k-total').textContent=m.total_events.toLocaleString();
   document.getElementById('k-proc').textContent=m.processed_last_hour.toLocaleString();
@@ -1320,7 +1320,7 @@ async function fetchEvents(){
   const t=(document.getElementById('fs-type')||{}).value||'';
   let u=`/api/v1/events?page=${evPage}&page_size=25`;
   if(s)u+=`&status=${s}`;if(pr)u+=`&priority=${pr}`;if(t)u+=`&event_type=${encodeURIComponent(t)}`;
-  const d=await(await fetch(`${API}${u}`)).json();
+  const d=await(await authFetch(u)).json();
   const items=d.items||[];
   document.getElementById('ev-total').textContent=`${(d.total||0).toLocaleString()} events`;
   document.getElementById('pg-label').textContent=`Page ${evPage}`;
@@ -1358,18 +1358,18 @@ function updateActivity(items){
 // DLQ
 // ════════════════════════════════════════
 async function fetchDLQ(){
-  const items=await(await fetch(`${API}/api/v1/events/dlq?replayed=false&limit=30`)).json();
+  const items=await(await authFetch('/api/v1/events/dlq?replayed=false&limit=30')).json();
   document.getElementById('dlq-pill').textContent=`${items.length} entries`;
   document.getElementById('dlq-rows').innerHTML=items.length
     ?items.map(ev=>`<div class="dlq-item"><div class="dlq-type">${ev.event_type}</div><div class="dlq-meta">${ev.source} · retries:${ev.retry_count} · ${fdt(ev.created_at)}</div><div class="dlq-reason">⚠ ${ev.failure_reason}</div><button class="replay-one" onclick="replayOne('${ev.id}')">↺ Replay</button></div>`).join('')
     :'<div class="empty-state">Queue is clean ✓</div>';
 }
 async function replayAll(){
-  try{const d=await(await fetch(`${API}/api/v1/replay/all`,{method:'POST'})).json();showToast(`↺ Replayed ${d.replayed}`,true);fetchDLQ();fetchAll();}
+  try{const d=await(await authFetch('/api/v1/replay/all',{method:'POST'})).json();showToast(`↺ Replayed ${d.replayed}`,true);fetchDLQ();fetchAll();}
   catch(e){showToast('Replay failed',false);}
 }
 async function replayOne(id){
-  try{await fetch(`${API}/api/v1/replay`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dlq_event_ids:[id]})});showToast('↺ Replayed ✓',true);fetchDLQ();}
+  try{await authFetch('/api/v1/replay',{method:'POST',body:JSON.stringify({dlq_event_ids:[id]})});showToast('↺ Replayed ✓',true);fetchDLQ();}
   catch(e){showToast('Replay failed',false);}
 }
 
