@@ -51,7 +51,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=400, detail="Email already registered")
 
     import json
-    redis = await get_redis()
+    redis = get_redis()
     code  = generate_verification_code()
     await redis.setex(f"pending_reg:{payload.email}", VERIFY_TTL, json.dumps({
         "email": payload.email, "full_name": payload.full_name,
@@ -65,7 +65,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 @router.post("/auth/verify", response_model=RegisterResponse, status_code=201)
 async def verify_registration(email: str, code: str, db: AsyncSession = Depends(get_db)):
     import json
-    redis = await get_redis()
+    redis = get_redis()
     raw   = await redis.get(f"pending_reg:{email}")
     if not raw:
         raise HTTPException(status_code=400, detail="Code expired — please register again")
@@ -104,7 +104,7 @@ async def verify_registration(email: str, code: str, db: AsyncSession = Depends(
 @router.post("/auth/resend-code")
 async def resend_code(email: str):
     import json
-    redis = await get_redis()
+    redis = get_redis()
     raw   = await redis.get(f"pending_reg:{email}")
     if not raw:
         raise HTTPException(status_code=400, detail="No pending registration — please register again")
