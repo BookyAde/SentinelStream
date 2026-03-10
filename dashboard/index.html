@@ -1006,11 +1006,33 @@ setTheme(THEMES[themeIdx]);
 // ════════════════════════════════════════
 // BOOT
 // ════════════════════════════════════════
-window.addEventListener('load', () => {
-  if (token && me && wsSlug) showDashboard();
-  else showScreen('auth-screen');
+window.addEventListener('load', async () => {
   updateClock();
   setInterval(updateClock, 1000);
+  if (token && me && wsSlug) {
+    // Validate token is still good before showing dashboard
+    try {
+      const r = await fetch(`${API}/api/v1/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (r.ok) {
+        const fresh = await r.json();
+        me = fresh;
+        localStorage.setItem('ss_me', JSON.stringify(me));
+        showDashboard();
+      } else {
+        // Token expired or invalid — clear and show login
+        ['ss_token','ss_me','ss_ws','ss_apikey'].forEach(k=>localStorage.removeItem(k));
+        token = null; me = null; wsSlug = null; apiKey = null;
+        showScreen('auth-screen');
+      }
+    } catch(e) {
+      // Network error — still try to show dashboard optimistically
+      showDashboard();
+    }
+  } else {
+    showScreen('auth-screen');
+  }
 });
 
 function showScreen(id) {
@@ -1168,7 +1190,12 @@ function doLogout(){
   location.reload();
 }
 async function authFetch(path,opts={}){
-  return fetch(`${API}${path}`,{...opts,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,...(opts.headers||{})}});
+  const r = await fetch(`${API}${path}`,{...opts,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,...(opts.headers||{})}});
+  if(r.status===401){
+    ['ss_token','ss_me','ss_ws','ss_apikey'].forEach(k=>localStorage.removeItem(k));
+    location.reload();
+  }
+  return r;
 }
 
 // ════════════════════════════════════════
