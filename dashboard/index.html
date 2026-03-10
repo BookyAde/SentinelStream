@@ -987,15 +987,14 @@ let themeIdx = THEMES.indexOf(localStorage.getItem('ss_theme') || 'dark');
 if(themeIdx<0) themeIdx=0;
 
 function setTheme(t) {
-  try{
-  document.body.setAttribute('data-theme', t);
-  localStorage.setItem('ss_theme', t);
-  themeIdx = THEMES.indexOf(t);
-  document.querySelectorAll('.theme-opt').forEach(el => el.classList.toggle('active', el.dataset.t === t));
-  document.getElementById('theme-popup')?.classList.remove('open');
-  resizeChart(); drawChart();
-}
-  }catch(e){}
+  try {
+    document.body.setAttribute('data-theme', t);
+    localStorage.setItem('ss_theme', t);
+    themeIdx = THEMES.indexOf(t);
+    document.querySelectorAll('.theme-opt').forEach(el => el.classList.toggle('active', el.dataset.t === t));
+    document.getElementById('theme-popup')?.classList.remove('open');
+    resizeChart(); drawChart();
+  } catch(e) {}
 }
 function cycleTheme(){ setTheme(THEMES[(themeIdx+1)%THEMES.length]); }
 function toggleThemePopup(){
