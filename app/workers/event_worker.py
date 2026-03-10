@@ -2,9 +2,6 @@
 SentinelStream Processing Worker
 Drains the Redis event queue, calls the processor, persists results,
 and routes failures to the Dead Letter Queue with exponential back-off.
-
-Run standalone:  python -m app.workers.event_worker
-Or as a script:  python run_worker.py
 """
 
 import asyncio
@@ -13,19 +10,18 @@ import signal
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
-from app.db.postgres import AsyncSessionLocal, init_db
+from app.db.postgres import init_db
 from app.db.redis_client import init_redis, dequeue_events, enqueue_dlq, get_redis
 from app.models.dlq import DeadLetterEvent
 from app.models.event import Event, EventStatus
 from app.services.processor import ProcessorService
 
 logger = get_logger(__name__)
-
 _shutdown = False
 
 
@@ -35,13 +31,21 @@ def _handle_signal(sig, frame):
     _shutdown = True
 
 
+def _get_session():
+    """Import AsyncSessionLocal fresh each time so we always get the live value."""
+    from app.db.postgres import AsyncSessionLocal
+    if AsyncSessionLocal is None:
+        raise RuntimeError("DB not initialized — AsyncSessionLocal is None")
+    return AsyncSessionLocal()
+
+
 # ── Core worker loop ──────────────────────────────────────────────────────────
 
 async def process_batch(events_json: list[str]) -> None:
     """Process a batch of serialised events inside a single DB session."""
     processor = ProcessorService()
 
-    async with AsyncSessionLocal() as db:
+    async with _get_session() as db:
         for raw in events_json:
             event_dict: dict = {}
             try:
@@ -53,7 +57,6 @@ async def process_batch(events_json: list[str]) -> None:
                     extra={"error": str(exc), "raw": raw[:200]},
                     exc_info=True,
                 )
-                # Push to DLQ even if we couldn't parse the event
                 await enqueue_dlq(raw)
         await db.commit()
 
@@ -64,9 +67,8 @@ async def _process_single(
     db: AsyncSession,
 ) -> None:
     event_id_str = event_dict.get("id")
-    retry_count = event_dict.get("retry_count", 0)
+    retry_count  = event_dict.get("retry_count", 0)
 
-    # Mark as processing
     if event_id_str:
         await db.execute(
             update(Event)
@@ -77,7 +79,6 @@ async def _process_single(
     try:
         await processor.process(event_dict)
 
-        # Mark processed
         if event_id_str:
             await db.execute(
                 update(Event)
@@ -87,8 +88,6 @@ async def _process_single(
                     processed_at=datetime.now(timezone.utc),
                 )
             )
-
-        # Increment global processed counter in Redis
         await get_redis().incr("sentinel:metrics:processed_total")
 
     except Exception as exc:
@@ -99,7 +98,6 @@ async def _process_single(
         )
 
         if retry_count < settings.MAX_RETRY_ATTEMPTS:
-            # Back-off and re-queue
             backoff = settings.RETRY_BACKOFF_BASE ** retry_count
             await asyncio.sleep(backoff)
             event_dict["retry_count"] = retry_count + 1
@@ -117,7 +115,6 @@ async def _process_single(
                     )
                 )
         else:
-            # Exhausted retries → DLQ
             await _send_to_dlq(event_dict, error_msg, db)
             if event_id_str:
                 await db.execute(
@@ -164,18 +161,22 @@ async def run_worker() -> None:
     await init_db()
     await init_redis()
 
-    signal.signal(signal.SIGINT, _handle_signal)
+    signal.signal(signal.SIGINT,  _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)
 
     logger.info("SentinelStream worker started", extra={"worker_id": _worker_id()})
 
     while not _shutdown:
-        batch = await dequeue_events(settings.QUEUE_BATCH_SIZE)
-        if batch:
-            logger.debug("Processing batch", extra={"size": len(batch)})
-            await process_batch(batch)
-        else:
-            await asyncio.sleep(0.1)  # idle poll
+        try:
+            batch = await dequeue_events(settings.QUEUE_BATCH_SIZE)
+            if batch:
+                logger.debug("Processing batch", extra={"size": len(batch)})
+                await process_batch(batch)
+            else:
+                await asyncio.sleep(0.1)
+        except Exception as e:
+            logger.error(f"Worker loop error: {e}", exc_info=True)
+            await asyncio.sleep(1)  # brief pause before retrying
 
     logger.info("Worker shut down cleanly")
 
