@@ -7,21 +7,19 @@ import secrets
 import string
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ── Passwords ──────────────────────────────────────────────
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
 # ── JWT ────────────────────────────────────────────────────
@@ -53,13 +51,13 @@ def generate_api_key() -> tuple[str, str, str]:
     alphabet = string.ascii_letters + string.digits
     random_part = "".join(secrets.choice(alphabet) for _ in range(32))
     full_key = f"sk_live_{random_part}"
-    prefix   = full_key[:16]          # "sk_live_" + first 8 chars
-    key_hash = pwd_context.hash(full_key)
+    prefix   = full_key[:16]
+    key_hash = bcrypt.hashpw(full_key.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     return full_key, prefix, key_hash
 
 
 def verify_api_key(plain_key: str, key_hash: str) -> bool:
-    return pwd_context.verify(plain_key, key_hash)
+    return bcrypt.checkpw(plain_key.encode("utf-8"), key_hash.encode("utf-8"))
 
 
 # ── Workspace slug ─────────────────────────────────────────
