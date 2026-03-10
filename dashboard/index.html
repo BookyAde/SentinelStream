@@ -987,12 +987,15 @@ let themeIdx = THEMES.indexOf(localStorage.getItem('ss_theme') || 'dark');
 if(themeIdx<0) themeIdx=0;
 
 function setTheme(t) {
+  try{
   document.body.setAttribute('data-theme', t);
   localStorage.setItem('ss_theme', t);
   themeIdx = THEMES.indexOf(t);
   document.querySelectorAll('.theme-opt').forEach(el => el.classList.toggle('active', el.dataset.t === t));
   document.getElementById('theme-popup')?.classList.remove('open');
   resizeChart(); drawChart();
+}
+  }catch(e){}
 }
 function cycleTheme(){ setTheme(THEMES[(themeIdx+1)%THEMES.length]); }
 function toggleThemePopup(){
@@ -1246,12 +1249,19 @@ function updateClock(){
 // ════════════════════════════════════════
 // CHART
 // ════════════════════════════════════════
-const CC = document.getElementById('throughput-chart');
-const CX = CC?.getContext('2d');
-function resizeChart(){if(!CC)return;const p=CC.parentElement.getBoundingClientRect();CC.width=p.width-28;CC.height=110;}
+function resizeChart(){
+  const CC=document.getElementById('throughput-chart');
+  if(!CC)return;
+  CC.width=(CC.parentElement.getBoundingClientRect().width||400)-28;
+  CC.height=110;
+}
 function drawChart(){
+  const CC=document.getElementById('throughput-chart');
+  if(!CC)return;
+  const CX=CC.getContext('2d');
   if(!CX)return;
-  const W=CC.width,H=CC.height;if(!W||!H)return;
+  const W=CC.width,H=CC.height;
+  if(!W||!H)return;
   CX.clearRect(0,0,W,H);
   const maxV=Math.max(...tputHist,.001),sx=W/(TPUT_N-1);
   CX.strokeStyle='rgba(15,37,64,.7)';CX.lineWidth=1;
