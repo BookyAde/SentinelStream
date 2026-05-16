@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: sentinelstream-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: https://www.omspglobal.org,https://omspglobal.org
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sentinelstream-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: sentinelstream-redis
+          property: connectionString
+
+  - type: worker
+    name: sentinelstream-worker
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    startCommand: python run_worker.py
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sentinelstream-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: sentinelstream-redis
+          property: connectionString
+
+databases:
+  - name: sentinelstream-db
+    plan: free
+
+  - name: sentinelstream-redis
+    plan: free
+    type: redis
