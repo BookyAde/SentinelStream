@@ -26,7 +26,6 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
-    startCommand: python run_worker.py
 
     envVars:
       - key: ENVIRONMENT
