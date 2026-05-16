@@ -7,9 +7,7 @@ import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import (
-    String, Text, DateTime, Integer, Enum, Index, func
-)
+from sqlalchemy import String, Text, DateTime, Integer, Enum, Index, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,24 +34,46 @@ class Event(Base):
 
     # Identity
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
     )
-    external_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    external_id: Mapped[str | None] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=True,
+    )
 
     # Classification
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     priority: Mapped[EventPriority] = mapped_column(
-        Enum(EventPriority), default=EventPriority.NORMAL, nullable=False
+        Enum(EventPriority),
+        default=EventPriority.NORMAL,
+        nullable=False,
     )
 
     # Payload
-    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+    payload: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+    )
+
+    # SQLAlchemy reserves "metadata", so we use metadata_ in Python
+    # while storing it as "metadata" in PostgreSQL.
+    metadata_: Mapped[dict] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=False,
+        default=dict,
+    )
 
     # Processing state
     status: Mapped[EventStatus] = mapped_column(
-        Enum(EventStatus), default=EventStatus.QUEUED, nullable=False
+        Enum(EventStatus),
+        default=EventStatus.QUEUED,
+        nullable=False,
     )
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -61,13 +81,20 @@ class Event(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(),
-        onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     __table_args__ = (
         Index("ix_events_status", "status"),
@@ -75,6 +102,9 @@ class Event(Base):
         Index("ix_events_source", "source"),
         Index("ix_events_created_at", "created_at"),
         Index("ix_events_priority_status", "priority", "status"),
+
+        # Useful for OMSP route/navigation analysis later
+        Index("ix_events_source_type_created", "source", "event_type", "created_at"),
     )
 
     def __repr__(self) -> str:

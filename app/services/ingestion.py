@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.logging import get_logger
 from app.db.redis_client import enqueue_event
@@ -27,53 +26,85 @@ class IngestionService:
     # ── Single event ──────────────────────────────────────────────────────────
 
     async def ingest(self, data: EventIngest) -> IngestResponse:
-        """Persist an event to Postgres and push it onto the Redis queue."""
+        """
+        Persist an event to Postgres and push it onto the Redis queue.
+
+        This keeps the full payload and metadata untouched, which is important
+        for detailed navigation tracking from OMSP.
+        """
+
         # Idempotency check on external_id
         if data.external_id:
             existing = await self._find_by_external_id(data.external_id)
             if existing:
-                logger.info("Duplicate event ignored", extra={"external_id": data.external_id})
-                queue_len = 0  # already processed
+                logger.info(
+                    "Duplicate event ignored",
+                    extra={"external_id": data.external_id},
+                )
                 return IngestResponse(
                     event_id=existing.id,
                     status="duplicate",
-                    queue_position=queue_len,
+                    queue_position=0,
                 )
 
         event = Event(
             id=uuid.uuid4(),
             external_id=data.external_id,
-            event_type=data.event_type,
-            source=data.source,
+            event_type=data.event_type.strip(),
+            source=data.source.strip(),
             priority=data.priority,
-            payload=data.payload,
-            metadata_=data.metadata,
+            payload=data.payload or {},
+            metadata_=data.metadata or {},
             status=EventStatus.QUEUED,
         )
+
         self.db.add(event)
-        await self.db.flush()  # get the ID without committing
+        await self.db.flush()
 
         queue_len = await enqueue_event(self._serialize(event))
 
+        await self.db.commit()
+        await self.db.refresh(event)
+
         logger.info(
             "Event ingested",
-            extra={"event_id": str(event.id), "type": event.event_type, "queue_len": queue_len},
+            extra={
+                "event_id": str(event.id),
+                "type": event.event_type,
+                "source": event.source,
+                "queue_len": queue_len,
+            },
         )
-        return IngestResponse(event_id=event.id, status="queued", queue_position=queue_len)
+
+        return IngestResponse(
+            event_id=event.id,
+            status="queued",
+            queue_position=queue_len,
+        )
 
     # ── Batch ingestion ───────────────────────────────────────────────────────
 
     async def ingest_batch(self, events: list[EventIngest]) -> BatchIngestResponse:
-        """Ingest multiple events atomically, returning per-event results."""
+        """
+        Ingest multiple events.
+
+        Each event is handled independently so one bad event does not block
+        the whole batch.
+        """
+
         accepted_ids: list[uuid.UUID] = []
         errors: list[str] = []
 
         for idx, data in enumerate(events):
             try:
                 result = await self.ingest(data)
+
                 if result.status != "duplicate":
                     accepted_ids.append(result.event_id)
+
             except Exception as exc:
+                await self.db.rollback()
+
                 msg = f"Event[{idx}] failed: {exc}"
                 errors.append(msg)
                 logger.warning(msg)
@@ -97,12 +128,13 @@ class IngestionService:
         return json.dumps(
             {
                 "id": str(event.id),
+                "external_id": event.external_id,
                 "event_type": event.event_type,
                 "source": event.source,
                 "priority": event.priority.value,
-                "payload": event.payload,
-                "metadata": event.metadata_,
+                "payload": event.payload or {},
+                "metadata": event.metadata_ or {},
                 "enqueued_at": datetime.now(timezone.utc).isoformat(),
-                "retry_count": 0,
+                "retry_count": event.retry_count or 0,
             }
         )

@@ -18,8 +18,11 @@ class EventIngest(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=100)
     source: str = Field(..., min_length=1, max_length=100)
     priority: EventPriority = EventPriority.NORMAL
-    payload: dict[str, Any] = Field(..., description="Arbitrary event data")
-    metadata: Optional[dict[str, Any]] = None
+    payload: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Arbitrary event data"
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict)
     external_id: Optional[str] = Field(None, max_length=255)
 
     @field_validator("event_type", "source")
@@ -42,7 +45,7 @@ class EventResponse(BaseModel):
     source: str
     priority: EventPriority
     payload: dict[str, Any]
-    metadata: Optional[dict[str, Any]] = Field(None, alias="metadata_")
+    metadata: Optional[dict[str, Any]] = Field(default_factory=dict, alias="metadata_")
     status: EventStatus
     retry_count: int
     error_message: Optional[str] = None
@@ -116,7 +119,7 @@ class ProcessingMetrics(BaseModel):
 
 
 class PipelineHealth(BaseModel):
-    status: str  # "healthy" | "degraded" | "unhealthy"
+    status: str
     queue: QueueMetrics
     processing: ProcessingMetrics
     worker_count: int

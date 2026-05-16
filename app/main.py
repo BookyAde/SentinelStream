@@ -4,7 +4,10 @@ FastAPI Application Entry Point
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
@@ -27,24 +30,55 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SentinelStream API",
-    description="High-throughput event processing pipeline with dead-letter queue and replay",
-    version="1.0.0",
+    description="High-throughput event processing pipeline with dead-letter queue, replay, API keys, and telemetry analytics",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
-# Middleware
+BASE_DIR = Path(__file__).resolve().parent.parent
+DASHBOARD_FILE = BASE_DIR / "dashboard" / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+async def serve_dashboard():
+    if DASHBOARD_FILE.exists():
+        return FileResponse(DASHBOARD_FILE)
+
+    return JSONResponse(
+        {
+            "name": "SentinelStream API",
+            "status": "running",
+            "docs": "/docs",
+            "health": "/health",
+        }
+    )
+
+
+@app.get("/api", include_in_schema=False)
+async def api_root():
+    return {
+        "name": "SentinelStream API",
+        "version": "1.1.0",
+        "status": "online",
+        "docs": "/docs",
+        "events": "/api/v1/events",
+        "metrics": "/api/v1/metrics",
+    }
+
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # Allow all origins
-    allow_credentials=False,  # MUST be False when allow_origins=["*"]
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers
-app.include_router(health.router,   prefix="/health",          tags=["Health"])
-app.include_router(auth.router,     prefix="/api/v1",          tags=["Auth"])
-app.include_router(events.router,   prefix="/api/v1/events",   tags=["Events"])
-app.include_router(metrics.router,  prefix="/api/v1/metrics",  tags=["Metrics"])
-app.include_router(replay.router,   prefix="/api/v1/replay",   tags=["Replay"])
+
+app.include_router(health.router, prefix="/health", tags=["Health"])
+app.include_router(auth.router, prefix="/api/v1", tags=["Auth"])
+app.include_router(events.router, prefix="/api/v1/events", tags=["Events"])
+app.include_router(metrics.router, prefix="/api/v1/metrics", tags=["Metrics"])
+app.include_router(replay.router, prefix="/api/v1/replay", tags=["Replay"])

@@ -46,20 +46,49 @@ async def get_superuser(user: User = Depends(get_current_user)) -> User:
 
 @router.post("/auth/register", status_code=201)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    existing = await db.execute(select(User).where(User.email == payload.email))
+    existing = await db.execute(
+        select(User).where(User.email == payload.email)
+    )
+
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
 
     import json
+
     redis = get_redis()
-    code  = generate_verification_code()
-    await redis.setex(f"pending_reg:{payload.email}", VERIFY_TTL, json.dumps({
-        "email": payload.email, "full_name": payload.full_name,
-        "hashed_password": hash_password(payload.password),
-        "workspace_name": payload.workspace_name, "code": code,
-    }))
-    await send_verification_email(payload.email, payload.full_name, code)
-    return {"detail": "Verification code sent to your email", "email": payload.email, "expires": "15 minutes"}
+
+    code = generate_verification_code()
+
+    # DEV LOGGING
+    print(f"DEV VERIFICATION CODE for {payload.email}: {code}")
+
+    await redis.setex(
+        f"pending_reg:{payload.email}",
+        VERIFY_TTL,
+        json.dumps({
+            "email": payload.email,
+            "full_name": payload.full_name,
+            "hashed_password": hash_password(payload.password),
+            "workspace_name": payload.workspace_name,
+            "code": code,
+        })
+    )
+
+    # Optional during local development
+    await send_verification_email(
+        payload.email,
+        payload.full_name,
+        code
+    )
+
+    return {
+        "detail": "Verification code sent to your email",
+        "email": payload.email,
+        "expires": "15 minutes"
+    }
 
 
 @router.post("/auth/verify", response_model=RegisterResponse, status_code=201)

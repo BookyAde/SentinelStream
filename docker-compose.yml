@@ -1,100 +1,149 @@
 services:
   # ── Infrastructure ──────────────────────────────────────────────────────
+
   postgres:
     image: postgres:16-alpine
+
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
     ports:
       - "5432:5432"
+
     volumes:
       - pg_data:/var/lib/postgresql/data
+
     networks:
       - sentinel_net
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
+
     ports:
       - "6379:6379"
+
     volumes:
       - redis_data:/data
+
     command: redis-server --appendonly yes
+
     networks:
       - sentinel_net
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
 
-  # ── Application ─────────────────────────────────────────────────────────
+  # ── API ─────────────────────────────────────────────────────────────────
+
   api:
     build: .
+
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
     ports:
       - "8000:8000"
+
     environment:
+      ENVIRONMENT: development
+
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
+
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+
     depends_on:
       postgres:
         condition: service_healthy
+
       redis:
         condition: service_healthy
+
     volumes:
       - .:/app
+
     networks:
       - sentinel_net
+
+  # ── Workers ─────────────────────────────────────────────────────────────
 
   worker:
     build: .
+
     command: python -m app.workers.event_worker
+
     environment:
+      ENVIRONMENT: development
+
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
+
     depends_on:
       postgres:
         condition: service_healthy
+
       redis:
         condition: service_healthy
+
     volumes:
       - .:/app
+
     networks:
       - sentinel_net
+
     deploy:
       replicas: 2
 
-  # ── Observability ────────────────────────────────────────────────────────
+  # ── Redis Commander ─────────────────────────────────────────────────────
+
   redis-commander:
     image: rediscommander/redis-commander:latest
+
     environment:
       REDIS_HOSTS: "local:redis:6379"
+
     ports:
       - "8081:8081"
+
     depends_on:
       - redis
+
     networks:
       - sentinel_net
+
+# ── Networks ──────────────────────────────────────────────────────────────
 
 networks:
   sentinel_net:
     driver: bridge
+
+# ── Persistent volumes ────────────────────────────────────────────────────
 
 volumes:
   pg_data:
