@@ -70,7 +70,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.CORS_ORIGINS, 
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
