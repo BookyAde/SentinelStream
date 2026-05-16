@@ -38,12 +38,22 @@ def _get_database_url() -> str:
         return url
 
     # Normalize scheme for asyncpg
+    # Normalize scheme for asyncpg
     url = url.replace("postgres://", "postgresql+asyncpg://", 1)
     url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if "postgresql+asyncpg+asyncpg://" in url:
-        url = url.replace("postgresql+asyncpg+asyncpg://", "postgresql+asyncpg://", 1)
 
-    logger.info(f"Using DATABASE_URL from environment")
+    if "postgresql+asyncpg+asyncpg://" in url:
+        url = url.replace(
+            "postgresql+asyncpg+asyncpg://",
+            "postgresql+asyncpg://",
+            1,
+        )
+
+    if "ssl=" not in url and "sslmode=" not in url:
+        separator = "&" if "?" in url else "?"
+        url = f"{url}{separator}ssl=require"
+
+    logger.info("Using DATABASE_URL from environment")
     return url
 
 
